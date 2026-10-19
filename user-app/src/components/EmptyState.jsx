@@ -1,0 +1,2 @@
+import { Sparkles } from 'lucide-react';
+export default function EmptyState({title='Nothing added yet',text='Admin-added content will appear here automatically.'}){return <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/60 p-8 text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-white text-blue-600 shadow-sm"><Sparkles/></span><h3 className="mt-3 font-extrabold">{title}</h3><p className="mx-auto mt-1 max-w-md text-sm text-slate-500">{text}</p></div>}

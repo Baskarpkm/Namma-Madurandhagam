@@ -1,0 +1,1 @@
+export default function SimplePage({eyebrow='MODULE',title,children}){return <section><p className="text-xs font-black tracking-[.16em] text-blue-600">{eyebrow}</p><h2 className="mt-1 text-3xl font-black">{title}</h2><div className="mt-6 rounded-3xl border bg-white p-6 text-sm leading-6 text-slate-600 shadow-sm">{children}</div></section>}
