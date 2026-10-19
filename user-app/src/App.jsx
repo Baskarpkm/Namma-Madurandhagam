@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import UserLayout from './components/UserLayout';
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import ListingPage from './pages/ListingPage';
 import SearchPage from './pages/SearchPage';
@@ -16,6 +17,7 @@ import StoryViewPage from './pages/StoryViewPage';
 
 export default function App(){return <Routes>
   <Route path="/login" element={<LoginPage/>}/>
+  <Route path="/register" element={<RegisterPage/>}/>
   <Route element={<ProtectedRoute/>}>
     <Route path="/story/:id" element={<StoryViewPage/>}/>
     <Route element={<UserLayout/>}>
