@@ -58,6 +58,7 @@ router.post('/user/verify-otp',async(req,res,next)=>{
     let user=await User.findOne({mobile});
     if(!user){
       if(!name)return res.status(400).json({message:'Name is required for first registration'});
+      if(!village)return res.status(400).json({message:'Area / Village is required for first registration'});
       user=await User.create({name,mobile,village,address,gender,isVerified:true});
     }else{
       if(name)user.name=name;

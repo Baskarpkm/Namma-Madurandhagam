@@ -5,8 +5,6 @@ import { api } from '../lib/api';
 import { getUserToken, saveUserSession } from '../lib/session';
 import UserAvatar from '../components/UserAvatar';
 
-const villages=['Madurandhagam Town','Karunguzhi','Padalam','Acharapakkam','Other / Not Listed'];
-
 export default function RegisterPage(){
   const nav=useNavigate();
   const [step,setStep]=useState('form');
@@ -29,15 +27,12 @@ export default function RegisterPage(){
     setError('');
     if(!form.name.trim())return setError('Enter your name.');
     if(form.mobile.length!==10)return setError('Enter a valid 10 digit mobile number.');
-    if(!form.village)return setError('Choose your Area / Village.');
+    if(!form.village.trim())return setError('Enter your Area / Village.');
     if(!form.gender)return setError('Choose your gender.');
     setLoading(true);
     try{
       const result=await api('/auth/user/check-mobile',{method:'POST',body:JSON.stringify({mobile:form.mobile})});
-      if(result.registered){
-        setError('This mobile number is already registered. Please login instead.');
-        return;
-      }
+      if(result.registered){setError('This mobile number is already registered. Please login instead.');return;}
       const data=await api('/auth/user/request-otp',{method:'POST',body:JSON.stringify({mobile:form.mobile})});
       setDevOtp(data.devOtp||'');
       setStep('otp');
@@ -49,7 +44,7 @@ export default function RegisterPage(){
     setError('');
     setLoading(true);
     try{
-      const data=await api('/auth/user/verify-otp',{method:'POST',body:JSON.stringify({...form,otp})});
+      const data=await api('/auth/user/verify-otp',{method:'POST',body:JSON.stringify({...form,village:form.village.trim(),otp})});
       let nextUser=data.user;
       saveUserSession(data.token,nextUser);
       if(avatarFile){
@@ -90,7 +85,7 @@ export default function RegisterPage(){
 
         <Field label="Your Name" icon={<UserRound size={20}/>}><input className="w-full bg-transparent outline-none" placeholder="Enter your name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></Field>
         <Field label="Mobile Number" icon={<Phone size={20}/>}><div className="flex w-full items-center gap-2"><span className="font-bold text-slate-500">+91</span><input className="min-w-0 flex-1 bg-transparent outline-none" inputMode="numeric" maxLength={10} placeholder="Enter 10 digit mobile number" value={form.mobile} onChange={e=>setForm({...form,mobile:e.target.value.replace(/\D/g,'')})}/></div></Field>
-        <Field label="Area / Village" icon={<MapPin size={20}/>}><select className="w-full bg-transparent outline-none" value={form.village} onChange={e=>setForm({...form,village:e.target.value})}><option value="">Select area / village</option>{villages.map(v=><option key={v}>{v}</option>)}</select></Field>
+        <Field label="Area / Village *" icon={<MapPin size={20}/>}><input required className="w-full bg-transparent outline-none" placeholder="Type your area / village" value={form.village} onChange={e=>setForm({...form,village:e.target.value})}/></Field>
         <Field label="Address" icon={<MapPin size={20}/>}><input className="w-full bg-transparent outline-none" placeholder="House / street / locality (optional)" value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></Field>
         <Field label="Gender" icon={<UserRound size={20}/>}><select className="w-full bg-transparent outline-none" value={form.gender} onChange={e=>setForm({...form,gender:e.target.value})}><option value="">Select gender</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other / Prefer not to say</option></select></Field>
         {error&&<ErrorBox>{error}</ErrorBox>}
