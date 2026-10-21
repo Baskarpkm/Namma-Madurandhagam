@@ -10,13 +10,13 @@ const links = [
 
 export default function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
-      <div className="mx-auto grid max-w-xl grid-cols-4">
+    <nav className="fixed inset-x-0 bottom-0 z-50 h-[68px] border-t border-slate-200 bg-white/95 backdrop-blur md:hidden">
+      <div className="mx-auto grid h-full max-w-xl grid-cols-4">
         {links.map(([to, Icon, label]) => (
           <NavLink key={to} to={to} end={to === '/'}>
             {({ isActive }) => (
               <span
-                className={`relative flex flex-col items-center gap-1 px-1 py-2 text-[11px] font-bold ${
+                className={`relative flex h-full flex-col items-center justify-center gap-1 px-1 py-2 text-[11px] font-bold ${
                   isActive ? 'text-blue-600' : 'text-slate-500'
                 }`}
               >

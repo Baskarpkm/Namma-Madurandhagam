@@ -35,7 +35,7 @@ export default function App() {
           <Route path="/view/:id" element={<ContentDetailPage />} />
           <Route path="/offer/:id" element={<OfferDetailPage />} />
           <Route path="/search" element={<SearchPage />} />
-          <Route path="/shops" element={<ListingPage type="shop" title="Businesses" subtitle="Discover local shops and businesses around Madurandhagam." />} />
+          <Route path="/shops" element={<ListingPage type="shop" title="Business / Shops" subtitle="Discover local businesses and shops around Madurandhagam." />} />
           <Route path="/workers" element={<ListingPage type="worker" title="Workers" subtitle="Find local skilled workers and service professionals." />} />
           <Route path="/jobs" element={<ListingPage type="job" title="Jobs" subtitle="Local jobs and opportunities." />} />
           <Route path="/vehicles" element={<ListingPage type="vehicle" title="Vehicles" subtitle="Local vehicle listings." />} />
