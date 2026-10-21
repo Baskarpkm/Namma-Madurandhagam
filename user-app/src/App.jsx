@@ -12,8 +12,10 @@ import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import PostEntryPage from './pages/PostEntryPage';
 import MySubmissionsPage from './pages/MySubmissionsPage';
+import MyPostsPage from './pages/MyPostsPage';
 import MockPaymentPage from './pages/MockPaymentPage';
 import ContentDetailPage from './pages/ContentDetailPage';
+import OfferDetailPage from './pages/OfferDetailPage';
 import StoryViewPage from './pages/StoryViewPage';
 
 export default function App() {
@@ -29,7 +31,9 @@ export default function App() {
           <Route path="/post" element={<PostEntryPage />} />
           <Route path="/mock-payment/:contentId" element={<MockPaymentPage />} />
           <Route path="/my-submissions" element={<MySubmissionsPage />} />
+          <Route path="/my-posts" element={<MyPostsPage />} />
           <Route path="/view/:id" element={<ContentDetailPage />} />
+          <Route path="/offer/:id" element={<OfferDetailPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/shops" element={<ListingPage type="shop" title="Businesses" subtitle="Discover local shops and businesses around Madurandhagam." />} />
           <Route path="/workers" element={<ListingPage type="worker" title="Workers" subtitle="Find local skilled workers and service professionals." />} />

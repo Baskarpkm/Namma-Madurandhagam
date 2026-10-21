@@ -1,4 +1,4 @@
-import { Camera, FileCheck2, LogOut, MapPin, Phone, Save, ShieldCheck, Trash2 } from 'lucide-react';
+import { Camera, FileCheck2, Images, LogOut, Phone, Save, ShieldCheck, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -29,7 +29,17 @@ export default function ProfilePage(){
         <label className="block"><span className="mb-1.5 block text-sm font-bold">Full Address</span><textarea rows="3" value={form.address} onChange={e=>setForm({...form,address:e.target.value})} placeholder="Door no, street, area, village..." className="w-full rounded-xl border bg-slate-50 px-3 py-2.5 outline-none focus:border-blue-400"/></label>
         <div className="grid gap-2 rounded-2xl bg-slate-50 p-3 sm:grid-cols-2"><Info icon={<Phone/>} label="Mobile" value={user?.mobile?`+91 ${user.mobile}`:'-'}/><Info icon={<ShieldCheck/>} label="Account" value="Mobile verified"/></div>
         <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 font-extrabold text-white disabled:opacity-50"><Save size={18}/>{busy?'Saving...':'Save Profile'}</button>
-        <Link to="/my-submissions" className="flex items-center gap-3 rounded-2xl border p-3 hover:bg-slate-50"><span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600"><FileCheck2/></span><div><p className="text-xs font-semibold text-slate-400">Posts, Stories & Listings</p><p className="font-bold text-slate-800">My Posts / Submissions</p></div></Link>
+
+        <div className="grid gap-3 pt-1 sm:grid-cols-2">
+          <Link to="/my-submissions" className="flex items-center gap-3 rounded-2xl border p-3 hover:bg-slate-50">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-blue-50 text-blue-600"><FileCheck2/></span>
+            <div><p className="text-xs font-semibold text-slate-400">Status & payments</p><p className="font-bold text-slate-800">My Submissions</p></div>
+          </Link>
+          <Link to="/my-posts" className="flex items-center gap-3 rounded-2xl border p-3 hover:bg-slate-50">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600"><Images/></span>
+            <div><p className="text-xs font-semibold text-slate-400">Photos & videos</p><p className="font-bold text-slate-800">My Posts</p></div>
+          </Link>
+        </div>
       </form>
     </section>
     <button onClick={logout} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 font-extrabold text-red-700"><LogOut size={19}/> Logout</button>

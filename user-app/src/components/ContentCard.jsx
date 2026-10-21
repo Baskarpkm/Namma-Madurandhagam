@@ -7,6 +7,7 @@ import UserAvatar from './UserAvatar';
 
 export default function ContentCard({ item, compact = false }) {
   const isPost = item.type === 'post';
+  const detailPath = item.type === 'offer' ? `/offer/${item._id}` : `/view/${item._id}`;
   const token = getUserToken();
   const [liked, setLiked] = useState(Boolean(item.likedByMe));
   const [likeCount, setLikeCount] = useState(Number(item.likeCount || 0));
@@ -56,7 +57,7 @@ export default function ContentCard({ item, compact = false }) {
 
   const media = item.mediaUrl ? (
     <Link
-      to={`/view/${item._id}`}
+      to={detailPath}
       className={
         isPost
           ? 'relative block w-full overflow-hidden bg-slate-100'
@@ -94,7 +95,7 @@ export default function ContentCard({ item, compact = false }) {
     </Link>
   ) : (
     <Link
-      to={`/view/${item._id}`}
+      to={detailPath}
       className={`${compact ? 'h-24' : 'h-32'} grid place-items-center bg-gradient-to-br from-blue-600 to-sky-400 text-4xl font-black text-white/90`}
     >
       NM
@@ -126,7 +127,7 @@ export default function ContentCard({ item, compact = false }) {
 
       <div className="p-4">
         <Link
-          to={`/view/${item._id}`}
+          to={detailPath}
           className="block text-lg font-black leading-snug text-slate-900 hover:text-blue-700"
         >
           {item.title}
@@ -153,7 +154,7 @@ export default function ContentCard({ item, compact = false }) {
                 <span>{likeCount}</span>
               </button>
               <Link
-                to={`/view/${item._id}`}
+                to={detailPath}
                 className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold text-slate-600 hover:bg-slate-100"
               >
                 <MessageCircle size={18} />
@@ -168,7 +169,7 @@ export default function ContentCard({ item, compact = false }) {
                 <Share2 size={18} />
                 <span>{shareCount}</span>
               </button>
-              <Link to={`/view/${item._id}`} className="ml-auto text-xs font-extrabold text-blue-600">
+              <Link to={detailPath} className="ml-auto text-xs font-extrabold text-blue-600">
                 View
               </Link>
             </div>
@@ -176,10 +177,10 @@ export default function ContentCard({ item, compact = false }) {
           </div>
         ) : (
           <Link
-            to={`/view/${item._id}`}
+            to={detailPath}
             className="mt-4 flex items-center justify-between border-t pt-3 text-sm font-extrabold text-blue-600"
           >
-            <span>{item.mediaType === 'video' ? 'Watch & view details' : 'View details'}</span>
+            <span>{item.type === 'offer' ? 'View offer' : item.mediaType === 'video' ? 'Watch & view details' : 'View details'}</span>
             <ArrowRight size={17} />
           </Link>
         )}
