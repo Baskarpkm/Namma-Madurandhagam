@@ -11,6 +11,8 @@ import uploadRoutes from './routes/upload.routes.js';
 import chatRoutes from './routes/chat.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
+import socialRoutes from './routes/social.routes.js';
+import socialContentMiddleware from './middleware/socialContent.middleware.js';
 import { ensureDefaultPlans } from './config/postPlans.js';
 import { processExpiredContent } from './services/contentLifecycle.js';
 
@@ -23,7 +25,8 @@ configureCloudinary();
 
 app.get('/api/health',(req,res)=>res.json({ok:true,service:'namma-madurandhagam-api',time:new Date().toISOString()}));
 app.use('/api/auth',authRoutes);
-app.use('/api/content',contentRoutes);
+app.use('/api/content',socialContentMiddleware,contentRoutes);
+app.use('/api/social',socialRoutes);
 app.use('/api/payments',paymentRoutes);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat',chatRoutes);

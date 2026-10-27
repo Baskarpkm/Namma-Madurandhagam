@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const schema=new mongoose.Schema({
   userId:{type:mongoose.Schema.Types.ObjectId,ref:'User',required:true,index:true},
-  type:{type:String,enum:['expiry','approval','changes-required','rejected','payment','general'],default:'general',index:true},
+  type:{type:String,enum:['expiry','approval','changes-required','rejected','payment','general','follow-request','follow','new-post'],default:'general',index:true},
   title:{type:String,required:true,trim:true},
   message:{type:String,required:true,trim:true},
   contentId:{type:mongoose.Schema.Types.ObjectId,ref:'Content',default:null,index:true},

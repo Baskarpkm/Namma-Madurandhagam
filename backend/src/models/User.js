@@ -7,6 +7,7 @@ const schema=new mongoose.Schema({
   gender:{type:String,enum:['male','female','other'],default:'other'},
   profilePhotoUrl:{type:String,default:''},
   profilePhotoPublicId:{type:String,default:''},
+  isPrivate:{type:Boolean,default:false,index:true},
   isVerified:{type:Boolean,default:false},
   status:{type:String,enum:['active','suspended','banned'],default:'active'},
   freeApprovedCounts:{

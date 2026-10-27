@@ -13,7 +13,8 @@ const userShape=(user)=>({
   village:user.village||'',
   address:user.address||'',
   gender:user.gender||'other',
-  profilePhotoUrl:user.profilePhotoUrl||''
+  profilePhotoUrl:user.profilePhotoUrl||'',
+  isPrivate:Boolean(user.isPrivate)
 });
 
 router.post('/admin/login',(req,res)=>{
