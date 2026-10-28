@@ -29,9 +29,9 @@ function normalize(path,data){
   return data;
 }
 
-export async function api(path,{token,headers,...options}={}){
+export async function api(path,{token,headers,fresh=false,...options}={}){
   const method=String(options.method||'GET').toUpperCase();
-  const useCache=method==='GET';
+  const useCache=method==='GET'&&!fresh;
   const key=keyFor(path,token);
 
   if(useCache){
@@ -40,10 +40,13 @@ export async function api(path,{token,headers,...options}={}){
     const stored=readStored(key);
     if(stored!==null){memoryCache.set(key,{ts:Date.now(),data:stored});return stored}
     if(inflight.has(key))return inflight.get(key);
-  }else clearGetCache();
+  }else if(method!=='GET'){
+    clearGetCache();
+  }
 
   const request=fetch(`${API}${path}`,{
     ...options,
+    cache:fresh?'no-store':options.cache,
     headers:{
       ...(options.body && !(options.body instanceof FormData) ? {'Content-Type':'application/json'} : {}),
       ...(token?{Authorization:`Bearer ${token}`}:{ }),

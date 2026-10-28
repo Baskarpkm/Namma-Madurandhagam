@@ -6,6 +6,7 @@ import { cloudinary } from '../config/cloudinary.js';
 
 const router=Router();
 const devOtps=new Map();
+
 const userShape=(user)=>({
   id:String(user._id||user.id),
   name:user.name,
@@ -14,7 +15,9 @@ const userShape=(user)=>({
   address:user.address||'',
   gender:user.gender||'other',
   profilePhotoUrl:user.profilePhotoUrl||'',
-  isPrivate:Boolean(user.isPrivate)
+  isPrivate:Boolean(user.isPrivate),
+  allowCalls:Boolean(user.allowCalls),
+  allowMessages:Boolean(user.allowMessages)
 });
 
 router.post('/admin/login',(req,res)=>{
@@ -84,16 +87,30 @@ router.get('/user/me',requireUser,async(req,res,next)=>{try{
 router.patch('/user/profile',requireUser,async(req,res,next)=>{try{
   const user=await User.findById(req.user.userId);
   if(!user)return res.status(404).json({message:'User account not found'});
-  if(req.body?.name!==undefined){const name=String(req.body.name||'').trim();if(!name)return res.status(400).json({message:'Name cannot be empty'});user.name=name}
+
+  if(req.body?.name!==undefined){
+    const name=String(req.body.name||'').trim();
+    if(!name)return res.status(400).json({message:'Name cannot be empty'});
+    user.name=name;
+  }
   if(req.body?.village!==undefined)user.village=String(req.body.village||'').trim();
   if(req.body?.address!==undefined)user.address=String(req.body.address||'').trim();
-  if(req.body?.gender!==undefined){if(!['male','female','other'].includes(req.body.gender))return res.status(400).json({message:'Choose a valid gender'});user.gender=req.body.gender}
+  if(req.body?.gender!==undefined){
+    if(!['male','female','other'].includes(req.body.gender))return res.status(400).json({message:'Choose a valid gender'});
+    user.gender=req.body.gender;
+  }
+  if(req.body?.allowCalls!==undefined)user.allowCalls=Boolean(req.body.allowCalls);
+  if(req.body?.allowMessages!==undefined)user.allowMessages=Boolean(req.body.allowMessages);
+
   if(req.body?.profilePhotoUrl!==undefined){
     const oldPublicId=user.profilePhotoPublicId;
     user.profilePhotoUrl=String(req.body.profilePhotoUrl||'');
     user.profilePhotoPublicId=String(req.body.profilePhotoPublicId||'');
-    if(oldPublicId&&oldPublicId!==user.profilePhotoPublicId)cloudinary.uploader.destroy(oldPublicId,{resource_type:'image'}).catch(()=>{});
+    if(oldPublicId&&oldPublicId!==user.profilePhotoPublicId){
+      cloudinary.uploader.destroy(oldPublicId,{resource_type:'image'}).catch(()=>{});
+    }
   }
+
   await user.save();
   res.json({user:userShape(user)});
 }catch(e){next(e)}});

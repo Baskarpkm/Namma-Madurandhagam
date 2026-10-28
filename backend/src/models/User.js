@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+
 const schema=new mongoose.Schema({
   name:{type:String,required:true,trim:true},
   mobile:{type:String,required:true,unique:true,index:true},
@@ -8,6 +9,8 @@ const schema=new mongoose.Schema({
   profilePhotoUrl:{type:String,default:''},
   profilePhotoPublicId:{type:String,default:''},
   isPrivate:{type:Boolean,default:false,index:true},
+  allowCalls:{type:Boolean,default:false,index:true},
+  allowMessages:{type:Boolean,default:false,index:true},
   isVerified:{type:Boolean,default:false},
   status:{type:String,enum:['active','suspended','banned'],default:'active'},
   freeApprovedCounts:{
@@ -15,4 +18,5 @@ const schema=new mongoose.Schema({
     post:{type:Number,default:0,min:0}
   }
 },{timestamps:true});
+
 export default mongoose.model('User',schema);

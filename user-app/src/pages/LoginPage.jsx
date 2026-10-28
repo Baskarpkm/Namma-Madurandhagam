@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { getUserToken, saveUserSession } from '../lib/session';
+import BrandLogo from '../components/BrandLogo';
 
 export default function LoginPage(){
   const nav=useNavigate();
@@ -29,7 +30,8 @@ export default function LoginPage(){
       const data=await api('/auth/user/request-otp',{method:'POST',body:JSON.stringify({mobile})});
       setDevOtp(data.devOtp||'');
       setStep('otp');
-    }catch(err){setError(err.message)}finally{setLoading(false)}
+    }catch(err){setError(err.message)}
+    finally{setLoading(false)}
   };
 
   const verify=async(e)=>{
@@ -40,7 +42,8 @@ export default function LoginPage(){
       const data=await api('/auth/user/verify-otp',{method:'POST',body:JSON.stringify({mobile,otp})});
       saveUserSession(data.token,data.user);
       nav('/',{replace:true});
-    }catch(err){setError(err.message)}finally{setLoading(false)}
+    }catch(err){setError(err.message)}
+    finally{setLoading(false)}
   };
 
   const changeNumber=()=>{setStep('mobile');setOtp('');setDevOtp('');setError('')};
@@ -51,7 +54,7 @@ export default function LoginPage(){
         <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10"/>
         <div className="absolute -bottom-16 -left-12 h-64 w-64 rounded-full bg-white/10"/>
         <div className="relative z-10">
-          <span className="grid h-16 w-16 place-items-center rounded-2xl bg-white/15 text-2xl font-black ring-1 ring-white/25">NM</span>
+          <BrandLogo className="h-20 w-20"/>
           <h1 className="mt-8 text-4xl font-black leading-tight">Namma<br/>Madurandhagam</h1>
           <p className="mt-4 max-w-sm text-blue-50">Our people, local shops, jobs, workers, vehicles, events and community updates — all in one place.</p>
         </div>
@@ -62,7 +65,7 @@ export default function LoginPage(){
       </div>
 
       <div className="p-6 sm:p-9">
-        <div className="md:hidden"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-600 font-black text-white">NM</span></div>
+        <div className="md:hidden"><BrandLogo className="h-16 w-16"/></div>
         <p className="mt-5 text-xs font-extrabold tracking-[.18em] text-blue-600">WELCOME BACK</p>
         <h2 className="mt-1 text-3xl font-black text-slate-950">{step==='mobile'?'Login':'Verify OTP'}</h2>
         <p className="mt-2 text-sm leading-6 text-slate-500">{step==='mobile'?'Enter your registered mobile number to continue.':`Enter the 6 digit OTP sent to +91 ${mobile}.`}</p>
@@ -101,7 +104,7 @@ export default function LoginPage(){
         <p className="mt-8 text-center text-xs leading-5 text-slate-400">OTP is currently in test mode. Production OTP provider can be enabled before public launch.</p>
       </div>
     </section>
-  </main>
+  </main>;
 }
 
 function ErrorBox({children}){return <p className="rounded-2xl bg-red-50 p-3 text-sm font-semibold text-red-700">{children}</p>}
