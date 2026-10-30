@@ -8,17 +8,15 @@ router.use(requireUser);
 
 router.get('/profile/:id',async(req,res,next)=>{try{
   if(!mongoose.isValidObjectId(req.params.id))return res.status(404).json({message:'Profile not found'});
-  if(String(req.params.id)===String(req.user.userId)){
-    return res.json({canCall:false,canMessage:false,callHref:''});
-  }
-
-  const target=await User.findById(req.params.id).select('mobile allowCalls allowMessages status').lean();
+  const isSelf=String(req.params.id)===String(req.user.userId);
+  const target=await User.findById(req.params.id).select('username mobile allowCalls allowMessages status').lean();
   if(!target||target.status!=='active')return res.status(404).json({message:'Profile not found'});
 
-  const canCall=Boolean(target.allowCalls);
-  const canMessage=Boolean(target.allowMessages);
+  const canCall=!isSelf&&Boolean(target.allowCalls);
+  const canMessage=!isSelf&&Boolean(target.allowMessages);
 
   res.json({
+    username:target.username||'',
     canCall,
     canMessage,
     // The phone number is never rendered as profile text. It is supplied only to the native tel: action when the owner enabled calls.

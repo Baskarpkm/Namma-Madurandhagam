@@ -13,6 +13,8 @@ import adminRoutes from './routes/admin.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import socialRoutes from './routes/social.routes.js';
 import contactRoutes from './routes/contact.routes.js';
+import presenceRoutes from './routes/presence.routes.js';
+import userSearchRoutes from './routes/userSearch.routes.js';
 import socialContentMiddleware from './middleware/socialContent.middleware.js';
 import { ensureDefaultPlans } from './config/postPlans.js';
 import { processExpiredContent } from './services/contentLifecycle.js';
@@ -29,8 +31,8 @@ configureCloudinary();
 app.get('/api/health',(req,res)=>res.json({ok:true,service:'namma-madurandhagam-api',time:new Date().toISOString()}));
 app.get('/api/live/version',(req,res)=>res.json({version:liveVersion}));
 
-// Any successful data mutation (except chat, which has its own fast polling) bumps a cheap version token.
-// Frontends poll only this tiny endpoint and soft-refresh only after a real change.
+// Any successful data mutation (except chat/presence heartbeat, which poll independently)
+// bumps a cheap version token. Frontends soft-refresh only after a real content/settings change.
 app.use('/api',(req,res,next)=>{
   const mutating=['POST','PATCH','PUT','DELETE'].includes(req.method);
   const liveMutation=
@@ -51,6 +53,8 @@ app.use('/api/auth',authRoutes);
 app.use('/api/content',socialContentMiddleware,contentRoutes);
 app.use('/api/social',socialRoutes);
 app.use('/api/contact',contactRoutes);
+app.use('/api/presence',presenceRoutes);
+app.use('/api/user-search',userSearchRoutes);
 app.use('/api/payments',paymentRoutes);
 app.use('/api/upload',uploadRoutes);
 app.use('/api/chat',chatRoutes);

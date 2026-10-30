@@ -1,6 +1,6 @@
 import { ArrowLeft, Eye, Pause, Play, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api } from '../lib/api';
 import { getUser, getUserToken } from '../lib/session';
 import { getSeenStoryIds, markStorySeen } from '../lib/storySeen';
@@ -281,14 +281,13 @@ export default function StoryViewPage() {
         </div>
 
         <div className="mt-3 flex items-center gap-3">
-          <button onClick={(e) => {e.stopPropagation(); nav('/', {replace:true});}} className="grid h-10 w-10 place-items-center rounded-full bg-black/30 backdrop-blur" aria-label="Back to stories">
+          <button onClick={(e) => {e.stopPropagation(); nav('/', {replace:true});}} className="hidden h-10 w-10 place-items-center rounded-full bg-black/30 backdrop-blur md:grid" aria-label="Back to stories">
             <ArrowLeft size={22}/>
           </button>
-          <UserAvatar user={item.author} sizeClass="h-10 w-10" iconSize={19} className="border-2 border-emerald-400"/>
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-extrabold">{item.author?.name || 'Namma Madurandhagam'}</p>
-            <p className="text-xs text-white/70">{when(item.publishedAt || item.createdAt)}</p>
-          </div>
+          {item.author?.id?<Link to={`/profile/${item.author.id}`} onClick={e=>e.stopPropagation()} className="flex min-w-0 flex-1 items-center gap-3">
+            <UserAvatar user={item.author} sizeClass="h-10 w-10" iconSize={19} className="border-2 border-emerald-400"/>
+            <div className="min-w-0"><p className="truncate font-extrabold">{item.author?.name || 'Namma Madurandhagam'}</p><p className="text-xs text-white/70">{when(item.publishedAt || item.createdAt)}</p></div>
+          </Link>:<><UserAvatar user={item.author} sizeClass="h-10 w-10" iconSize={19} className="border-2 border-emerald-400"/><div className="min-w-0 flex-1"><p className="truncate font-extrabold">{item.author?.name || 'Namma Madurandhagam'}</p><p className="text-xs text-white/70">{when(item.publishedAt || item.createdAt)}</p></div></>}
           <button onClick={togglePause} className="grid h-10 w-10 place-items-center rounded-full bg-black/30 backdrop-blur" aria-label={paused ? 'Play story' : 'Pause story'}>
             {paused ? <Play size={21} fill="currentColor"/> : <Pause size={21} fill="currentColor"/>}
           </button>
@@ -316,24 +315,9 @@ export default function StoryViewPage() {
         )}
 
         <div className="absolute inset-0 z-20 flex pt-20">
-          <button
-            type="button"
-            onClick={(e) => {e.stopPropagation(); previous();}}
-            className="h-full w-[36%]"
-            aria-label="Previous story"
-          />
-          <button
-            type="button"
-            onClick={togglePause}
-            className="h-full w-[28%]"
-            aria-label={paused ? 'Resume story' : 'Pause story'}
-          />
-          <button
-            type="button"
-            onClick={(e) => {e.stopPropagation(); advance();}}
-            className="h-full flex-1"
-            aria-label="Next story"
-          />
+          <button type="button" onClick={(e) => {e.stopPropagation(); previous();}} className="h-full w-[36%]" aria-label="Previous story"/>
+          <button type="button" onClick={togglePause} className="h-full w-[28%]" aria-label={paused ? 'Resume story' : 'Pause story'}/>
+          <button type="button" onClick={(e) => {e.stopPropagation(); advance();}} className="h-full flex-1" aria-label="Next story"/>
         </div>
 
         {flash && (
@@ -344,14 +328,10 @@ export default function StoryViewPage() {
       </div>
 
       {item.description && (
-        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/80 to-transparent px-5 pt-16 text-center ${isOwner ? 'pb-20' : 'pb-8'}`}>
-          <p className="mx-auto max-w-xl whitespace-pre-wrap text-sm font-semibold leading-6 text-white/95">{item.description}</p>
+        <div className={`pointer-events-none absolute inset-x-0 z-30 px-5 ${isOwner ? 'bottom-20' : 'bottom-7'}`}>
+          <p className="mx-auto max-w-xl whitespace-pre-wrap rounded-2xl bg-black/45 px-4 py-3 text-center text-sm font-semibold leading-6 text-white/95 shadow-lg backdrop-blur-sm">{item.description}</p>
         </div>
       )}
-
-      <div className="pointer-events-none absolute bottom-2 left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/35 px-3 py-1 text-[10px] font-semibold text-white/70 backdrop-blur">
-        Tap left/right • Center to pause • Swipe down to close
-      </div>
 
       {isOwner && (
         <button onClick={openViewers} className="absolute bottom-5 left-5 z-40 flex items-center gap-2 rounded-full bg-black/45 px-4 py-2 text-sm font-extrabold text-white backdrop-blur">

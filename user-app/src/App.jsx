@@ -6,6 +6,9 @@ import HomeEntry from './components/HomeEntry';
 import GlobalRefreshFix from './components/GlobalRefreshFix';
 import StoryViewportLock from './components/StoryViewportLock';
 import LiveAutoSync from './components/LiveAutoSync';
+import MobileBackHider from './components/MobileBackHider';
+import PresenceHeartbeat from './components/PresenceHeartbeat';
+import AccountStatusGate from './components/AccountStatusGate';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import WelcomePage from './pages/WelcomePage';
@@ -32,13 +35,17 @@ export default function App(){
 
   return <>
     <GlobalRefreshFix/>
+    <MobileBackHider/>
     <LiveAutoSync onSync={softSync}/>
+    <PresenceHeartbeat/>
+    <AccountStatusGate/>
     <Routes key={syncKey}>
       <Route path="/login" element={<LoginPage/>}/>
       <Route path="/register" element={<RegisterPage/>}/>
       <Route element={<ProtectedRoute/>}>
         <Route path="/welcome" element={<WelcomePage/>}/>
         <Route path="/story/:id" element={<StoryViewportLock><StoryViewPage/></StoryViewportLock>}/>
+        <Route path="/chat/:peerId" element={<ChatConversationPage/>}/>
         <Route element={<UserLayout/>}>
           <Route path="/" element={<HomeEntry/>}/>
           <Route path="/post" element={<PostEntryPage/>}/>
@@ -58,7 +65,6 @@ export default function App(){
           <Route path="/updates" element={<ListingPage type="post" title="Posts & Updates" subtitle="News, videos and updates from around Madurandhagam."/>}/>
           <Route path="/notifications" element={<NotificationsPage/>}/>
           <Route path="/chat" element={<ChatPage/>}/>
-          <Route path="/chat/:peerId" element={<ChatConversationPage/>}/>
           <Route path="/profile" element={<ProfilePage/>}/>
           <Route path="/profile/:userId" element={<PublicProfilePage/>}/>
           <Route path="/profile/:userId/followers" element={<FollowListPage mode="followers"/>}/>

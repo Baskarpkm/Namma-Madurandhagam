@@ -6,10 +6,16 @@ import { cloudinary } from '../config/cloudinary.js';
 
 const router=Router();
 const devOtps=new Map();
+const USERNAME_RE=/^[a-z0-9_]{3,30}$/;
+
+const normalizeUsername=value=>String(value||'').trim().toLowerCase().replace(/^@/,'');
+const testOtpEnabled=()=>process.env.ENABLE_TEST_OTP==='true'||process.env.NODE_ENV!=='production';
+const testOtpCode=()=>String(process.env.TEST_OTP_CODE||'123456').replace(/\D/g,'').slice(0,6).padStart(6,'0');
 
 const userShape=(user)=>({
   id:String(user._id||user.id),
   name:user.name,
+  username:user.username||'',
   mobile:user.mobile,
   village:user.village||'',
   address:user.address||'',
@@ -17,8 +23,26 @@ const userShape=(user)=>({
   profilePhotoUrl:user.profilePhotoUrl||'',
   isPrivate:Boolean(user.isPrivate),
   allowCalls:Boolean(user.allowCalls),
-  allowMessages:Boolean(user.allowMessages)
+  allowMessages:Boolean(user.allowMessages),
+  status:user.status||'active',
+  statusReason:user.statusReason||'',
+  suspendedUntil:user.suspendedUntil||null
 });
+
+function issueUserToken(user){
+  return jwt.sign({role:'user',userId:user.id,mobile:user.mobile},process.env.JWT_SECRET,{expiresIn:'30d'});
+}
+
+async function reactivateIfExpired(user){
+  if(user?.status==='suspended'&&user.suspendedUntil&&new Date(user.suspendedUntil)<=new Date()){
+    user.status='active';
+    user.statusReason='';
+    user.suspendedUntil=null;
+    user.statusUpdatedAt=new Date();
+    await user.save();
+  }
+  return user;
+}
 
 router.post('/admin/login',(req,res)=>{
   const {username,password}=req.body||{};
@@ -28,59 +52,68 @@ router.post('/admin/login',(req,res)=>{
   res.json({token,admin:{username}});
 });
 
-router.post('/user/check-mobile',async(req,res,next)=>{
-  try{
-    const mobile=String(req.body?.mobile||'').replace(/\D/g,'');
-    if(mobile.length!==10)return res.status(400).json({message:'Enter a valid 10 digit mobile number'});
-    const user=await User.findOne({mobile}).select('_id status').lean();
-    res.json({registered:Boolean(user),status:user?.status||null});
-  }catch(e){next(e)}
-});
+router.post('/user/check-mobile',async(req,res,next)=>{try{
+  const mobile=String(req.body?.mobile||'').replace(/\D/g,'');
+  if(mobile.length!==10)return res.status(400).json({message:'Enter a valid 10 digit mobile number'});
+  const user=await User.findOne({mobile}).select('_id status statusReason suspendedUntil').lean();
+  res.json({registered:Boolean(user),status:user?.status||null});
+}catch(e){next(e)}});
 
+router.post('/user/check-username',async(req,res,next)=>{try{
+  const username=normalizeUsername(req.body?.username);
+  if(!USERNAME_RE.test(username))return res.status(400).json({available:false,message:'Username must be 3–30 characters using letters, numbers or underscore only.'});
+  const exists=await User.exists({username});
+  res.json({username,available:!exists,message:exists?'Username already exists.':'Username available.'});
+}catch(e){next(e)}});
+
+// TEMPORARY DEVELOPMENT OTP. Enable on Render with ENABLE_TEST_OTP=true.
+// Remove/disable this flag when Firebase Phone Authentication is activated.
 router.post('/user/request-otp',async(req,res)=>{
   const mobile=String(req.body?.mobile||'').replace(/\D/g,'');
   if(mobile.length!==10)return res.status(400).json({message:'Enter a valid 10 digit mobile number'});
-  if(process.env.NODE_ENV==='production')return res.status(501).json({message:'Firebase Phone OTP is not configured yet.'});
-  const otp='123456';
+  if(!testOtpEnabled())return res.status(503).json({message:'Test OTP is disabled. Set ENABLE_TEST_OTP=true for development.'});
+  const otp=testOtpCode();
   devOtps.set(mobile,{otp,expiresAt:Date.now()+5*60*1000});
   res.json({ok:true,message:'Development OTP generated',devOtp:otp,expiresInSeconds:300});
 });
 
-router.post('/user/verify-otp',async(req,res,next)=>{
-  try{
-    const mobile=String(req.body?.mobile||'').replace(/\D/g,'');
-    const otp=String(req.body?.otp||'');
-    const name=String(req.body?.name||'').trim();
-    const village=String(req.body?.village||'').trim();
-    const address=String(req.body?.address||'').trim();
-    const gender=['male','female','other'].includes(req.body?.gender)?req.body.gender:'other';
-    if(mobile.length!==10)return res.status(400).json({message:'Enter a valid mobile number'});
-    if(process.env.NODE_ENV==='production')return res.status(501).json({message:'Firebase Phone OTP verification is not configured yet.'});
-    const record=devOtps.get(mobile);
-    if(!record||record.expiresAt<Date.now()||record.otp!==otp)return res.status(400).json({message:'Invalid or expired OTP'});
+router.post('/user/verify-otp',async(req,res,next)=>{try{
+  const mobile=String(req.body?.mobile||'').replace(/\D/g,'');
+  const otp=String(req.body?.otp||'').replace(/\D/g,'');
+  const name=String(req.body?.name||'').trim();
+  const username=normalizeUsername(req.body?.username);
+  const village=String(req.body?.village||'').trim();
+  const address=String(req.body?.address||'').trim();
+  const gender=['male','female','other'].includes(req.body?.gender)?req.body.gender:'other';
+  if(mobile.length!==10)return res.status(400).json({message:'Enter a valid mobile number'});
+  if(!testOtpEnabled())return res.status(503).json({message:'Test OTP is disabled.'});
+  const record=devOtps.get(mobile);
+  if(!record||record.expiresAt<Date.now()||record.otp!==otp)return res.status(400).json({message:'Invalid or expired OTP'});
 
-    let user=await User.findOne({mobile});
-    if(!user){
-      if(!name)return res.status(400).json({message:'Name is required for first registration'});
-      if(!village)return res.status(400).json({message:'Area / Village is required for first registration'});
-      user=await User.create({name,mobile,village,address,gender,isVerified:true});
-    }else{
-      if(name)user.name=name;
-      if(village)user.village=village;
-      if(address)user.address=address;
-      if(req.body?.gender)user.gender=gender;
-      user.isVerified=true;
-      await user.save();
-    }
-    devOtps.delete(mobile);
-    const token=jwt.sign({role:'user',userId:user.id,mobile:user.mobile},process.env.JWT_SECRET,{expiresIn:'30d'});
-    res.json({token,user:userShape(user)});
-  }catch(e){next(e)}
-});
+  let user=await User.findOne({mobile});
+  if(!user){
+    if(!name)return res.status(400).json({message:'Name is required for first registration'});
+    if(!USERNAME_RE.test(username))return res.status(400).json({message:'Choose a valid username using 3–30 letters, numbers or underscore.'});
+    if(!village)return res.status(400).json({message:'Area / Village is required for first registration'});
+    if(await User.exists({username}))return res.status(409).json({message:'Username already exists. Please choose another username.'});
+    user=await User.create({name,username,mobile,village,address,gender,isVerified:true,lastSeenAt:new Date()});
+  }else{
+    await reactivateIfExpired(user);
+    user.isVerified=true;
+    user.lastSeenAt=new Date();
+    await user.save();
+  }
+  devOtps.delete(mobile);
+  res.json({token:issueUserToken(user),user:userShape(user)});
+}catch(e){
+  if(e?.code===11000&&e?.keyPattern?.username)return res.status(409).json({message:'Username already exists. Please choose another username.'});
+  next(e)
+}});
 
 router.get('/user/me',requireUser,async(req,res,next)=>{try{
-  const user=await User.findById(req.user.userId);
+  let user=await User.findById(req.user.userId);
   if(!user)return res.status(404).json({message:'User account not found'});
+  user=await reactivateIfExpired(user);
   res.json({user:userShape(user)});
 }catch(e){next(e)}});
 

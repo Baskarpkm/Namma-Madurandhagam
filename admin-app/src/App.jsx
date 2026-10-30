@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import AdminLayout from './components/AdminLayout';
 import GlobalRefreshFix from './components/GlobalRefreshFix';
 import LiveAutoSync from './components/LiveAutoSync';
+import MobileBackHider from './components/MobileBackHider';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ContentManagerPage from './pages/ContentManagerPage';
@@ -25,10 +26,12 @@ export default function App(){
 
   return <>
     <GlobalRefreshFix/>
+    <MobileBackHider/>
     <LiveAutoSync onSync={softSync}/>
     <Routes key={syncKey}>
       <Route path="/login" element={<LoginPage/>}/>
       <Route element={<ProtectedRoute/>}>
+        <Route path="/chat/:userId" element={<ChatConversationPage/>}/>
         <Route element={<AdminLayout/>}>
           <Route path="/" element={<DashboardPage/>}/>
           <Route path="/submissions" element={<SubmissionsPage/>}/>
@@ -50,7 +53,6 @@ export default function App(){
           <Route path="/reports" element={<ContentManagerPage type="status" title="Stories" description="Admin-created 24-hour stories/status items."/>}/>
           <Route path="/users" element={<UsersPage/>}/>
           <Route path="/chat" element={<ChatInboxPage/>}/>
-          <Route path="/chat/:userId" element={<ChatConversationPage/>}/>
           <Route path="/payments" element={<PaymentsPage/>}/>
           <Route path="/analytics" element={<SimplePage eyebrow="INSIGHTS" title="Analytics">Use Dashboard lifecycle cards for current live, expiry and renewal counts. More charts can be added after production data grows.</SimplePage>}/>
           <Route path="/settings" element={<SettingsPage/>}/>

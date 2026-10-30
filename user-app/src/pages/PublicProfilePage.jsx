@@ -10,7 +10,7 @@ import EmptyState from '../components/EmptyState';
 
 export default function PublicProfilePage(){
   const {userId}=useParams(),token=getUserToken(),me=getUser(),nav=useNavigate();
-  const [profile,setProfile]=useState(null),[posts,setPosts]=useState([]),[contact,setContact]=useState({canCall:false,canMessage:false,callHref:''});
+  const [profile,setProfile]=useState(null),[posts,setPosts]=useState([]),[contact,setContact]=useState({username:'',canCall:false,canMessage:false,callHref:''});
   const [error,setError]=useState(''),[loading,setLoading]=useState(true);
 
   const load=async()=>{
@@ -56,6 +56,7 @@ export default function PublicProfilePage(){
         <UserAvatar user={user} sizeClass="h-24 w-24" iconSize={40}/>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-2xl font-black text-slate-950">{user.name}</h1>
+          {contact?.username&&<p className="mt-0.5 truncate text-sm font-extrabold text-blue-600">@{contact.username}</p>}
           {user.village&&<p className="mt-1 flex items-center gap-1 text-sm font-semibold text-slate-500"><MapPin size={14}/>{user.village}</p>}
           <p className="mt-1 inline-flex items-center gap-1 text-xs font-bold text-slate-400">{user.isPrivate&&<Lock size={12}/>} {user.isPrivate?'Private account':'Public account'}</p>
         </div>

@@ -4,13 +4,19 @@ import Content from '../models/Content.js';
 import ChatMessage from '../models/ChatMessage.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { processExpiredContent } from '../services/contentLifecycle.js';
+import { getPresenceSummary } from '../services/presence.js';
 
 const router=Router();
 router.use(requireAdmin);
 const DAY=24*60*60*1000;
 const KPI_TYPES=['post','shop','offer','banner','job','vehicle','worker','event','status'];
 
+router.get('/presence',async(req,res,next)=>{try{
+  res.json(await getPresenceSummary());
+}catch(e){next(e)}});
+
 router.get('/users',async(req,res,next)=>{try{
+  await User.updateMany({status:'suspended',suspendedUntil:{$ne:null,$lte:new Date()}},{$set:{status:'active',statusReason:'',suspendedUntil:null,statusUpdatedAt:new Date()}}).catch(()=>{});
   const users=await User.find().sort({createdAt:-1}).lean();
   const ids=users.map(x=>x._id);
   const grouped=await Content.aggregate([
@@ -37,9 +43,28 @@ router.get('/users/:id',async(req,res,next)=>{try{
 }catch(e){next(e)}});
 
 router.patch('/users/:id',async(req,res,next)=>{try{
-  const allowed={};
-  if(['active','suspended','banned'].includes(req.body?.status))allowed.status=req.body.status;
-  const user=await User.findByIdAndUpdate(req.params.id,allowed,{new:true});
+  const status=String(req.body?.status||'');
+  if(!['active','suspended','banned'].includes(status))return res.status(400).json({message:'Choose a valid account status'});
+  const reason=String(req.body?.reason||'').trim();
+  const allowed={status,statusUpdatedAt:new Date()};
+
+  if(status==='active'){
+    allowed.statusReason='';
+    allowed.suspendedUntil=null;
+  }else if(status==='suspended'){
+    const rawDays=Number(req.body?.durationDays);
+    if(!reason)return res.status(400).json({message:'Suspension reason is required'});
+    if(!Number.isFinite(rawDays)||rawDays<1)return res.status(400).json({message:'Suspension duration is required'});
+    const days=Math.min(3650,Math.floor(rawDays));
+    allowed.statusReason=reason;
+    allowed.suspendedUntil=new Date(Date.now()+days*DAY);
+  }else{
+    if(!reason)return res.status(400).json({message:'Ban reason is required'});
+    allowed.statusReason=reason;
+    allowed.suspendedUntil=null;
+  }
+
+  const user=await User.findByIdAndUpdate(req.params.id,{$set:allowed},{new:true});
   if(!user)return res.status(404).json({message:'User not found'});
   res.json(user);
 }catch(e){next(e)}});

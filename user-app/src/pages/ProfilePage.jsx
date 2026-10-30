@@ -104,6 +104,7 @@ export default function ProfilePage(){
             <UserAvatar user={user} sizeClass="h-24 w-24" iconSize={40} className="ring-4 ring-white/25"/>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-2xl font-black">{user?.name}</h1>
+              {user?.username&&<p className="mt-0.5 truncate text-sm font-extrabold text-cyan-100">@{user.username}</p>}
               <p className="mt-1 text-sm text-blue-100">Namma Madurandhagam Member</p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-extrabold ring-1 ring-white/20">
@@ -112,7 +113,6 @@ export default function ProfilePage(){
                 </label>
                 {user?.profilePhotoUrl&&<button type="button" disabled={busy} onClick={removePhoto} className="inline-flex items-center gap-2 rounded-xl bg-white/15 px-3 py-2 text-xs font-extrabold ring-1 ring-white/20"><Trash2 size={14}/> Remove</button>}
               </div>
-              <p className="mt-2 text-[11px] font-semibold text-blue-100">Photo select pannina drag + zoom panni exact portion crop pannitu Apply kudukkalaam.</p>
             </div>
           </div>
 

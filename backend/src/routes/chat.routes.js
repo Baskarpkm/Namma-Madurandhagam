@@ -26,6 +26,7 @@ function publicPeer(user){
   return {
     id:String(user._id),
     name:user.name,
+    username:user.username||'',
     village:user.village||'',
     gender:user.gender||'other',
     profilePhotoUrl:user.profilePhotoUrl||'',
@@ -99,7 +100,7 @@ router.get('/user/conversations',requireUser,async(req,res,next)=>{try{
 
   const peerIds=[...map.keys()].filter(id=>mongoose.isValidObjectId(id));
   const users=peerIds.length
-    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name village gender profilePhotoUrl allowMessages allowCalls mobile').lean()
+    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile').lean()
     : [];
   const userMap=new Map(users.map(u=>[String(u._id),u]));
 
@@ -111,6 +112,7 @@ router.get('/user/conversations',requireUser,async(req,res,next)=>{try{
         peerId:x.peerId,
         peerType:'user',
         name:u.name,
+        username:u.username||'',
         village:u.village||'',
         gender:u.gender||'other',
         profilePhotoUrl:u.profilePhotoUrl||'',
@@ -164,7 +166,7 @@ router.get('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
   if(!mongoose.isValidObjectId(peerId))return res.status(404).json({message:'Conversation not found'});
   if(peerId===String(me))return res.status(400).json({message:'You cannot message yourself'});
 
-  const peer=await User.findById(peerId).select('name village gender profilePhotoUrl allowMessages allowCalls mobile status').lean();
+  const peer=await User.findById(peerId).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile status').lean();
   if(!peer||peer.status!=='active')return res.status(404).json({message:'User not found'});
 
   const key=userKey(me,peerId);
@@ -241,7 +243,7 @@ router.post('/user',requireUser,async(req,res,next)=>{try{
 // Admin endpoints only see admin-support conversations, never private user-user chats.
 router.get('/admin',requireAdmin,async(req,res,next)=>{try{
   const rows=await ChatMessage.find({userId:{$ne:null}})
-    .populate('userId','name mobile village status profilePhotoUrl gender')
+    .populate('userId','name username mobile village status profilePhotoUrl gender')
     .sort({createdAt:1})
     .limit(1000)
     .lean();

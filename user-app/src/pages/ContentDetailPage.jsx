@@ -58,7 +58,7 @@ export default function ContentDetailPage(){
     }catch(e){if(e?.name!=='AbortError')setNotice(e.message||'Unable to share post')}
   };
 
-  if(error)return <main className="mx-auto max-w-3xl px-4 py-10"><div className="rounded-3xl border bg-white p-8 text-center"><p className="font-bold text-red-600">{error}</p><button onClick={()=>nav(-1)} className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-white">Go Back</button></div></main>;
+  if(error)return <main className="mx-auto max-w-3xl px-4 py-10"><div className="rounded-3xl border bg-white p-8 text-center"><p className="font-bold text-red-600">{error}</p><button onClick={()=>nav(-1)} className="mt-4 hidden rounded-xl bg-blue-600 px-4 py-2 text-white md:inline-block">Go Back</button></div></main>;
   if(!item)return <main className="mx-auto max-w-3xl px-4 py-10"><div className="h-96 animate-pulse rounded-3xl bg-white"/></main>;
 
   const mediaItems=getMediaItems(item);
@@ -73,9 +73,13 @@ export default function ContentDetailPage(){
         {mediaItems.length>0&&<MediaCarousel item={item} controls showArrows={mediaItems.length>1} maxHeightClass="max-h-[72vh]"/>}
 
         <div className="px-4 pb-5 pt-3">
-          <div className="flex items-center gap-1"><button disabled={busy} onClick={toggleLike} className={`rounded-full p-2 transition ${item.likedByMe?'text-rose-600':'text-slate-700 hover:bg-slate-100'}`} aria-label="Like"><Heart size={27} fill={item.likedByMe?'currentColor':'none'}/></button><button onClick={()=>document.getElementById('post-comment-box')?.focus()} className="rounded-full p-2 text-slate-700 hover:bg-slate-100" aria-label="Comment"><MessageCircle size={27}/></button><button onClick={sharePost} className="rounded-full p-2 text-slate-700 hover:bg-slate-100" aria-label="Share"><Share2 size={26}/></button></div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-extrabold text-slate-800"><span>{item.likeCount||0} likes</span><span>{item.commentCount||0} comments</span><span>{item.shareCount||0} shares</span></div>
-          <div className="mt-3"><h1 className="text-xl font-black text-slate-950">{item.title}</h1><p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-6 text-slate-700">{item.description}</p></div>
+          <div className="grid grid-cols-3 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+            <button disabled={busy} onClick={toggleLike} className={`flex min-h-12 items-center justify-center gap-2 px-2 py-2.5 text-sm font-extrabold transition ${item.likedByMe?'text-rose-600':'text-slate-700 hover:bg-white'}`} aria-label="Like"><Heart size={23} fill={item.likedByMe?'currentColor':'none'}/><span>{item.likeCount||0}</span></button>
+            <button onClick={()=>document.getElementById('post-comment-box')?.focus()} className="flex min-h-12 items-center justify-center gap-2 border-x border-slate-200 px-2 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white" aria-label="Comment"><MessageCircle size={23}/><span>{item.commentCount||0}</span></button>
+            <button onClick={sharePost} className="flex min-h-12 items-center justify-center gap-2 px-2 py-2.5 text-sm font-extrabold text-slate-700 hover:bg-white" aria-label="Share"><Share2 size={22}/><span>{item.shareCount||0}</span></button>
+          </div>
+
+          <div className="mt-4"><h1 className="text-xl font-black text-slate-950">{item.title}</h1><p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-6 text-slate-700">{item.description}</p></div>
           {notice&&<p className="mt-3 rounded-xl bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">{notice}</p>}
 
           <section className="mt-5 border-t pt-4">
