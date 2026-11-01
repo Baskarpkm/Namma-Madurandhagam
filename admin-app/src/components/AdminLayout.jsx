@@ -18,10 +18,11 @@ const menu=[
   ['/events','Events',CalendarDays],
   ['/offers','Offers',Zap],
   ['/posts','Posts / Updates',FileText],
+  ['/stories','Stories',Image],
   ['/users','Users',Users],
   ['/chat','Chat Inbox',MessageCircle],
   ['/notifications','Alerts',Bell],
-  ['/reports','Stories',ShieldAlert],
+  ['/reports','Post Reports',ShieldAlert],
   ['/payments','Payments',WalletCards],
   ['/analytics','Analytics',BarChart3],
   ['/settings','Settings',Settings]
@@ -37,28 +38,15 @@ export default function AdminLayout(){
       <div className="flex h-16 items-center gap-3 px-4">
         <button onClick={()=>setOpen(true)} className="rounded-xl border p-2 lg:hidden"><Menu size={20}/></button>
         <BrandLogo className="h-10 w-10" rounded="rounded-xl"/>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-extrabold tracking-[.14em] text-blue-600">NAMMA MADURANDHAGAM</p>
-          <h1 className="truncate font-black">Admin Dashboard</h1>
-        </div>
+        <div className="min-w-0 flex-1"><p className="truncate text-xs font-extrabold tracking-[.14em] text-blue-600">NAMMA MADURANDHAGAM</p><h1 className="truncate font-black">Admin Dashboard</h1></div>
         <button onClick={logout} className="flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-bold text-slate-600"><LogOut size={17}/><span className="hidden sm:inline">Logout</span></button>
       </div>
     </header>
-
     <div className="flex">
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 border-r bg-white transition-all lg:sticky lg:top-16 lg:z-20 lg:h-[calc(100vh-4rem)] ${open?'translate-x-0':'-translate-x-full lg:translate-x-0'} ${mini?'lg:w-20':'lg:w-64'}`}>
-        <div className="flex items-center justify-between border-b p-3 lg:border-0">
-          <p className="font-black lg:hidden">Menu</p>
-          <button onClick={()=>setOpen(false)} className="rounded-xl border p-2 lg:hidden"><X size={18}/></button>
-          <button onClick={()=>setMini(!mini)} className="ml-auto hidden rounded-xl border p-2 text-slate-500 lg:block">{mini?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button>
-        </div>
-        <nav className="h-[calc(100%-60px)] overflow-y-auto p-3">
-          {menu.map(([to,label,Icon])=><NavLink key={to} to={to} end={to==='/'} onClick={()=>setOpen(false)} className={({isActive})=>`mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition ${isActive?'bg-blue-600 text-white shadow-md shadow-blue-100':'text-slate-600 hover:bg-blue-50 hover:text-blue-700'}`}>
-            <Icon size={19} className="shrink-0"/>{!mini&&<span>{label}</span>}
-          </NavLink>)}
-        </nav>
+        <div className="flex items-center justify-between border-b p-3 lg:border-0"><p className="font-black lg:hidden">Menu</p><button onClick={()=>setOpen(false)} className="rounded-xl border p-2 lg:hidden"><X size={18}/></button><button onClick={()=>setMini(!mini)} className="ml-auto hidden rounded-xl border p-2 text-slate-500 lg:block">{mini?<ChevronRight size={17}/>:<ChevronLeft size={17}/>}</button></div>
+        <nav className="h-[calc(100%-60px)] overflow-y-auto p-3">{menu.map(([to,label,Icon])=><NavLink key={to} to={to} end={to==='/'} onClick={()=>setOpen(false)} className={({isActive})=>`mb-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition ${isActive?'bg-blue-600 text-white shadow-md shadow-blue-100':'text-slate-600 hover:bg-blue-50 hover:text-blue-700'}`}><Icon size={19} className="shrink-0"/>{!mini&&<span>{label}</span>}</NavLink>)}</nav>
       </aside>
-
       {open&&<button className="fixed inset-0 z-40 bg-slate-950/30 lg:hidden" onClick={()=>setOpen(false)}/>}
       <main className="min-w-0 flex-1 p-4 sm:p-6"><Outlet/></main>
     </div>

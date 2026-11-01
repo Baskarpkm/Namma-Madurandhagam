@@ -20,6 +20,7 @@ import SettingsPage from './pages/SettingsPage';
 import SimplePage from './pages/SimplePage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import SubmissionsPage from './pages/SubmissionsPage';
+import ReportsPage from './pages/ReportsPage';
 
 export default function App(){
   const [syncKey,setSyncKey]=useState(0);
@@ -51,7 +52,8 @@ export default function App(){
           <Route path="/offers" element={<ContentManagerPage type="offer" title="Offers" description="Local offers and promotions."/>}/>
           <Route path="/posts" element={<ContentManagerPage type="post" title="Posts" description="All admin and user posts. Admin can directly edit or delete any post." includeUserContent/>}/>
           <Route path="/notifications" element={<ContentManagerPage type="incident" title="Alerts" description="Important alerts and incident notifications."/>}/>
-          <Route path="/reports" element={<ContentManagerPage type="status" title="Stories" description="Admin-created 24-hour stories/status items."/>}/>
+          <Route path="/reports" element={<ReportsPage/>}/>
+          <Route path="/stories" element={<ContentManagerPage type="status" title="Stories" description="Admin-created 24-hour stories/status items."/>}/>
           <Route path="/users" element={<UsersPage/>}/>
           <Route path="/chat" element={<ChatInboxPage/>}/>
           <Route path="/payments" element={<PaymentsPage/>}/>

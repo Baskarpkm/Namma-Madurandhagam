@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import ChatMessage from '../models/ChatMessage.js';
 import User from '../models/User.js';
 import Follow from '../models/Follow.js';
+import Block from '../models/Block.js';
 import { requireAdmin, requireUser } from '../middleware/auth.js';
 
 const router=Router();
@@ -33,7 +34,12 @@ async function hasAcceptedRelationship(viewerId,targetId){
   }));
 }
 
+async function blockedBetween(a,b){
+  return Boolean(await Block.exists({$or:[{blockerId:a,blockedId:b},{blockerId:b,blockedId:a}]}));
+}
+
 async function contactAllowed(viewerId,target){
+  if(await blockedBetween(viewerId,target?._id))return false;
   if(!target?.isPrivate)return true;
   return hasAcceptedRelationship(viewerId,target._id);
 }
@@ -50,7 +56,7 @@ function publicPeer(user,relationshipAllowed=true){
     profilePhotoUrl:user.profilePhotoUrl||'',
     canMessage,
     canCall,
-    callHref:canCall?`tel:+91${String(user.mobile||'').replace(/\D/g,'')}`:''
+    callHref:''
   };
 }
 
@@ -118,9 +124,11 @@ router.get('/user/conversations',requireUser,async(req,res,next)=>{try{
 
   const peerIds=[...map.keys()].filter(id=>mongoose.isValidObjectId(id));
   const users=peerIds.length
-    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile isPrivate').lean()
+    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name username village gender profilePhotoUrl allowMessages allowCalls isPrivate').lean()
     : [];
-  const userMap=new Map(users.map(u=>[String(u._id),u]));
+  const blockRows=peerIds.length?await Block.find({$or:[{blockerId:me,blockedId:{$in:peerIds}},{blockedId:me,blockerId:{$in:peerIds}}]}).select('blockerId blockedId').lean():[];
+  const blockedPeers=new Set(blockRows.map(r=>String(r.blockerId)===String(me)?String(r.blockedId):String(r.blockerId)));
+  const userMap=new Map(users.filter(u=>!blockedPeers.has(String(u._id))).map(u=>[String(u._id),u]));
 
   const userConversations=[...map.values()]
     .filter(x=>userMap.has(x.peerId))
@@ -184,8 +192,9 @@ router.get('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
   if(!mongoose.isValidObjectId(peerId))return res.status(404).json({message:'Conversation not found'});
   if(peerId===String(me))return res.status(400).json({message:'You cannot message yourself'});
 
-  const peer=await User.findById(peerId).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile isPrivate status').lean();
+  const peer=await User.findById(peerId).select('name username village gender profilePhotoUrl allowMessages allowCalls isPrivate status').lean();
   if(!peer||peer.status!=='active')return res.status(404).json({message:'User not found'});
+  if(await blockedBetween(me,peerId))return res.status(403).json({message:'This conversation is unavailable because one of you has blocked the other.'});
 
   const relationshipAllowed=await contactAllowed(me,peer);
   const key=userKey(me,peerId);
@@ -227,6 +236,7 @@ router.post('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
 
   const target=await User.findById(peerId).select('allowMessages isPrivate status').lean();
   if(!target||target.status!=='active')return res.status(404).json({message:'User not found'});
+  if(await blockedBetween(me,peerId))return res.status(403).json({message:'Messages are blocked between these users.'});
   if(!target.allowMessages)return res.status(403).json({message:'This user has turned off direct messages.'});
   if(!(await contactAllowed(me,target)))return res.status(403).json({message:'This private account allows messages only from followers and following.'});
 
@@ -263,7 +273,7 @@ router.post('/user',requireUser,async(req,res,next)=>{try{
 // Admin endpoints only see admin-support conversations, never private user-user chats.
 router.get('/admin',requireAdmin,async(req,res,next)=>{try{
   const rows=await ChatMessage.find({userId:{$ne:null}})
-    .populate('userId','name username mobile village status profilePhotoUrl gender')
+    .populate('userId','name username mobileLast4 village status profilePhotoUrl gender')
     .sort({createdAt:1})
     .limit(1000)
     .lean();

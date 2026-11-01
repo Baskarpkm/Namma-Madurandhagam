@@ -3,7 +3,14 @@ import mongoose from 'mongoose';
 const schema=new mongoose.Schema({
   name:{type:String,required:true,trim:true},
   username:{type:String,trim:true,lowercase:true,unique:true,sparse:true,index:true,minlength:3,maxlength:30},
-  mobile:{type:String,required:true,unique:true,index:true},
+
+  // `mobile` is legacy-only and is removed by privacy migration.
+  // Never write plaintext mobile for new/updated users.
+  mobile:{type:String,select:false},
+  mobileEncrypted:{type:String,select:false,default:''},
+  mobileHash:{type:String,select:false,unique:true,sparse:true,index:true},
+  mobileLast4:{type:String,default:''},
+
   village:{type:String,trim:true},
   address:{type:String,trim:true,default:''},
   gender:{type:String,enum:['male','female','other'],default:'other'},

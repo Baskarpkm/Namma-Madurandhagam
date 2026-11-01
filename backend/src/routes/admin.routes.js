@@ -6,10 +6,12 @@ import Notification from '../models/Notification.js';
 import Follow from '../models/Follow.js';
 import PublishingPass from '../models/PublishingPass.js';
 import AuditLog from '../models/AuditLog.js';
+import Report from '../models/Report.js';
 import { cloudinary } from '../config/cloudinary.js';
 import { requireAdmin } from '../middleware/auth.js';
 import { processExpiredContent } from '../services/contentLifecycle.js';
 import { getPresenceSummary } from '../services/presence.js';
+import { maskLast4, mobileLookupHash, normalizeMobile } from '../services/privacyCrypto.js';
 
 const router=Router();
 router.use(requireAdmin);
@@ -60,10 +62,7 @@ router.get('/users',async(req,res,next)=>{try{
     requiredIdSets.push(new Set(ids.map(String)));
   }
   if(String(req.query.withReports||'')==='true'){
-    const ids=await Content.distinct('ownerUserId',{
-      source:'user',ownerUserId:{$ne:null},userDeletedAt:null,
-      $or:[{'meta.reportCount':{$gt:0}},{'meta.reports.0':{$exists:true}}]
-    });
+    const ids=await Report.distinct('ownerUserId',{ownerUserId:{$ne:null},status:{$in:['open','reviewed','removed']}});
     requiredIdSets.push(new Set(ids.map(String)));
   }
   if(requiredIdSets.length){
@@ -76,7 +75,9 @@ router.get('/users',async(req,res,next)=>{try{
   const publicIdSearch=/^NMU-/i.test(q);
   if(q&&!publicIdSearch){
     const re=new RegExp(escapeRegex(q),'i');
-    const qOr=[{name:re},{username:re},{mobile:re},{village:re},{address:re}];
+    const qOr=[{name:re},{username:re},{village:re},{address:re}];
+    const mobile=normalizeMobile(q);
+    if(mobile.length===10)qOr.push({mobileHash:mobileLookupHash(mobile)});
     if(filter.$or)filter.$and=[{$or:filter.$or},{$or:qOr}],delete filter.$or;
     else filter.$or=qOr;
   }
@@ -94,9 +95,9 @@ router.get('/users',async(req,res,next)=>{try{
       {$match:{ownerUserId:{$in:ids},source:'user',userDeletedAt:null}},
       {$group:{_id:'$ownerUserId',submissions:{$sum:1},paid:{$sum:{$cond:[{$and:[{$eq:['$paymentStatus','paid']},{$gt:[{$ifNull:['$planAmount',0]},0]}]},1,0]}},totalPaid:{$sum:{$cond:[{$and:[{$eq:['$paymentStatus','paid']},{$gt:[{$ifNull:['$planAmount',0]},0]}]},{$ifNull:['$planAmount',0]},0]}}}}
     ]),
-    Content.aggregate([
-      {$match:{ownerUserId:{$in:ids},source:'user',userDeletedAt:null,$or:[{'meta.reportCount':{$gt:0}},{'meta.reports.0':{$exists:true}}]}},
-      {$group:{_id:'$ownerUserId',count:{$sum:{$cond:[{$gt:[{$ifNull:['$meta.reportCount',0]},0]},{$ifNull:['$meta.reportCount',0]},1]}}}}
+    Report.aggregate([
+      {$match:{ownerUserId:{$in:ids},status:{$in:['open','reviewed','removed']}}},
+      {$group:{_id:'$ownerUserId',count:{$sum:1}}}
     ]),
     Content.aggregate([
       {$match:{ownerUserId:{$in:ids},source:'user',paymentStatus:'paid',planAmount:{$gt:0},status:'approved',purgedAt:null,userDeletedAt:null,$or:[{expiresAt:null},{expiresAt:{$gt:now}}]}},
@@ -108,6 +109,7 @@ router.get('/users',async(req,res,next)=>{try{
   const activeMap=new Map(activePaidRows.map(x=>[String(x._id),x.count]));
   res.json(users.map(user=>({
     ...user,
+    mobileMasked:maskLast4(user.mobileLast4),
     publicUserId:makePublicUserId(user._id),
     submissionCount:map.get(String(user._id))?.submissions||0,
     paymentCount:map.get(String(user._id))?.paid||0,
@@ -123,6 +125,7 @@ router.get('/users/:id',async(req,res,next)=>{try{
   const submissions=await Content.find({ownerUserId:user._id,source:'user',userDeletedAt:null}).sort({createdAt:-1}).lean();
   const paid=submissions.filter(x=>x.paymentStatus==='paid'||x.paymentStatus==='refunded'||x.paymentStatus==='refund-pending'||x.paymentStatus==='refund-failed');
   const now=new Date();
+  const reportCount=await Report.countDocuments({ownerUserId:user._id,status:{$in:['open','reviewed','removed']}});
   const summary={
     submissions:submissions.length,
     live:submissions.filter(x=>x.status==='approved'&&(!x.expiresAt||new Date(x.expiresAt)>now)).length,
@@ -130,9 +133,9 @@ router.get('/users/:id',async(req,res,next)=>{try{
     payments:paid.length,
     totalPaid:paid.filter(x=>x.paymentStatus==='paid').reduce((n,x)=>n+Number(x.planAmount||0),0),
     activePaid:submissions.filter(x=>x.paymentStatus==='paid'&&Number(x.planAmount||0)>0&&x.status==='approved'&&(!x.expiresAt||new Date(x.expiresAt)>now)).length,
-    reports:submissions.reduce((n,x)=>n+Number(x.meta?.reportCount||((Array.isArray(x.meta?.reports)&&x.meta.reports.length)||0)),0)
+    reports:reportCount
   };
-  res.json({user:{...user,publicUserId:makePublicUserId(user._id)},summary,submissions});
+  res.json({user:{...user,mobileMasked:maskLast4(user.mobileLast4),publicUserId:makePublicUserId(user._id)},summary,submissions});
 }catch(e){next(e)}});
 
 router.patch('/users/:id',async(req,res,next)=>{try{
@@ -200,7 +203,7 @@ router.delete('/users/:id',async(req,res,next)=>{try{
     actor:`admin:${req.admin?.username||req.admin?.sub||'admin'}`,
     action:'user.delete',entityType:'user',entityId:String(user._id),
     details:{
-      publicUserId:makePublicUserId(user._id),name:user.name,mobile:user.mobile,
+      publicUserId:makePublicUserId(user._id),name:user.name,mobileMasked:maskLast4(user.mobileLast4),
       deletedContent:contentResult.deletedCount||0,
       deletedNotifications:notificationResult.deletedCount||0,
       deletedFollows:followResult.deletedCount||0,
@@ -230,7 +233,7 @@ router.get('/payments',async(req,res,next)=>{try{
   const filter={source:'user',paymentStatus:{$ne:'not-required'},planAmount:{$gt:0}};
   if(req.query.type)filter.type=req.query.type;
   if(req.query.status)filter.paymentStatus=req.query.status;
-  const rows=await Content.find(filter).populate('ownerUserId','name mobile village gender profilePhotoUrl').sort({createdAt:-1}).lean();
+  const rows=await Content.find(filter).populate('ownerUserId','name mobileLast4 village gender profilePhotoUrl').sort({createdAt:-1}).lean();
   res.json(rows);
 }catch(e){next(e)}});
 
@@ -240,7 +243,7 @@ router.get('/expiry-alerts',async(req,res,next)=>{try{
   const now=new Date(),until=new Date(now.getTime()+days*DAY);
   const filter={status:'approved',renewalAllowed:true,expiresAt:{$gt:now,$lte:until},purgedAt:null,userDeletedAt:null};
   if(req.query.type)filter.type=req.query.type;
-  const rows=await Content.find(filter).populate('ownerUserId','name mobile village gender profilePhotoUrl').sort({expiresAt:1}).lean();
+  const rows=await Content.find(filter).populate('ownerUserId','name mobileLast4 village gender profilePhotoUrl').sort({expiresAt:1}).lean();
   res.json(rows.map(x=>({...x,daysLeft:Math.max(1,Math.ceil((new Date(x.expiresAt)-now)/DAY))})));
 }catch(e){next(e)}});
 
@@ -249,7 +252,7 @@ router.get('/renewal-grace',async(req,res,next)=>{try{
   const now=new Date();
   const filter={status:'expired',renewalAllowed:true,renewalGraceUntil:{$gt:now},purgedAt:null,userDeletedAt:null};
   if(req.query.type)filter.type=req.query.type;
-  const rows=await Content.find(filter).populate('ownerUserId','name mobile village gender profilePhotoUrl').sort({renewalGraceUntil:1}).lean();
+  const rows=await Content.find(filter).populate('ownerUserId','name mobileLast4 village gender profilePhotoUrl').sort({renewalGraceUntil:1}).lean();
   res.json(rows.map(x=>({...x,graceDaysLeft:Math.max(1,Math.ceil((new Date(x.renewalGraceUntil)-now)/DAY))})));
 }catch(e){next(e)}});
 

@@ -1,4 +1,5 @@
 import { ArrowLeft, Scissors } from 'lucide-react';
+import { useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import PostPage from './PostPage';
 
@@ -22,12 +23,53 @@ export default function PostFormPage() {
   const type = source?.type || queryType || 'post';
   const isEditFlow = Boolean(location.state?.resubmit || location.state?.editOriginal);
 
+  // Privacy + direct-publish compatibility layer for the existing large PostPage.
+  // Phone/WhatsApp fields are no longer collected for listings; calls happen in-app.
+  // Old approval wording is rewritten because normal publishing no longer waits for admin approval.
+  useEffect(() => {
+    const root = document.querySelector('.post-form-shell');
+    if (!root) return undefined;
+
+    const apply = () => {
+      root.querySelectorAll('label').forEach(label => {
+        const caption = label.querySelector('span')?.textContent || '';
+        if (/Contact Mobile|WhatsApp Number/i.test(caption)) {
+          label.style.display = 'none';
+          const input = label.querySelector('input');
+          if (input) input.required = false;
+        }
+      });
+
+      const replacements = [
+        ['Send Edit Request — No New Payment', 'Update Listing — No New Payment'],
+        ['Edit Listing — Admin Approval', 'Edit Listing'],
+        ['Admin Review', 'Direct Update'],
+        ['Pending Admin Approval', 'Published immediately'],
+        ['Free slot → Published immediately', 'Free slot → Published immediately'],
+      ];
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      const nodes = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode);
+      nodes.forEach(node => {
+        let value = node.nodeValue || '';
+        for (const [from, to] of replacements) value = value.replaceAll(from, to);
+        if (value !== node.nodeValue) node.nodeValue = value;
+      });
+    };
+
+    apply();
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [type, isEditFlow]);
+
   return (
     <div className="post-form-shell">
       <style>{`
         .post-form-shell > main > div:first-child { display: none !important; }
         .post-form-shell > main > div:nth-child(2):not(form) { display: none !important; }
         .post-form-shell > main { padding-top: .75rem !important; }
+        .post-form-shell .border-purple-200.bg-purple-50 { display: none !important; }
       `}</style>
 
       <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-5">
