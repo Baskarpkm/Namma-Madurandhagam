@@ -10,7 +10,7 @@ const cards=[
 ];
 
 export default function DashboardPage(){
-  const [stats,setStats]=useState({users:0,listings:0,messages:0,pending:0,paymentPending:0,expiringSoon:0,typeCounts:{},liveCounts:{}});
+  const [stats,setStats]=useState({users:0,listings:0,messages:0,pending:0,paymentPending:0,expiringSoon:0,renewalGrace:0,typeCounts:{},liveCounts:{}});
   const [presence,setPresence]=useState({onlineNow:0,activeLast5Min:0,todayPeakOnline:0});
   const [expiring,setExpiring]=useState([]),[recentUsers,setRecentUsers]=useState([]),[ok,setOk]=useState(true);
 
@@ -44,7 +44,7 @@ export default function DashboardPage(){
     </div>
 
     <h3 className="mt-8 text-sm font-black uppercase tracking-[.14em] text-slate-400">Operations</h3>
-    <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Link to="/submissions"><StatCard label="Pending Review" value={stats.pending} icon={AlertTriangle} help="Needs Admin action"/></Link><Link to="/payments"><StatCard label="Payment Pending" value={stats.paymentPending} icon={CreditCard}/></Link><Link to="/expiry-alerts"><StatCard label="Expiring in 3 Days" value={stats.expiringSoon} icon={AlertTriangle} help="Renewal alerts"/></Link><Link to="/chat"><StatCard label="Chat Conversations" value={stats.conversations??stats.messages} icon={MessageCircle}/></Link></div>
+    <div className="mt-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Link to="/submissions"><StatCard label="Pending Review" value={stats.pending} icon={AlertTriangle} help="Needs Admin action"/></Link><Link to="/payments"><StatCard label="Payment Pending" value={stats.paymentPending} icon={CreditCard}/></Link><Link to="/expiry-alerts"><StatCard label="Expiring in 3 Days" value={stats.expiringSoon} icon={AlertTriangle} help={`${stats.renewalGrace||0} already expired & in renewal grace`}/></Link><Link to="/chat"><StatCard label="Chat Conversations" value={stats.conversations??stats.messages} icon={MessageCircle}/></Link></div>
 
     <h3 className="mt-8 text-xl font-black">Content Overview</h3><p className="mt-1 text-sm text-slate-500">Click any card to open Live / Expiring / Renewal / Pending / Expired filters.</p><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{cards.map(([type,label,Icon])=><Link key={type} to={`/lifecycle/${type}`}><StatCard label={label} value={stats.typeCounts?.[type]||0} icon={Icon} help={`${stats.liveCounts?.[type]||0} live`}/></Link>)}</div>
 

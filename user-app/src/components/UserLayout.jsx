@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import BannerCleaner from './BannerCleaner';
 import BottomNav from './BottomNav';
+import SiteFooter from './SiteFooter';
 
 export default function UserLayout() {
   return (
@@ -9,6 +10,7 @@ export default function UserLayout() {
       <AppHeader />
       <BannerCleaner />
       <Outlet />
+      <SiteFooter />
       <BottomNav />
     </div>
   );

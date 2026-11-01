@@ -8,6 +8,9 @@ import BrandLogo from './BrandLogo';
 
 const desktopLinks=[['/',Home,'Home'],['/post',Plus,'Post'],['/chat',MessageCircle,'Chat'],['/profile',UserRound,'Profile']];
 const when=(date)=>date?new Date(date).getTime():0;
+const dismissedKey=(userId)=>`nm-dismissed-popups:${userId||'guest'}`;
+const getDismissedPopups=(userId)=>{try{return new Set(JSON.parse(localStorage.getItem(dismissedKey(userId))||'[]').map(String))}catch{return new Set()}};
+const rememberDismissedPopup=(userId,popupId)=>{if(!popupId)return;try{const current=Array.from(getDismissedPopups(userId));const next=[String(popupId),...current.filter(x=>x!==String(popupId))].slice(0,100);localStorage.setItem(dismissedKey(userId),JSON.stringify(next))}catch{}};
 
 export default function AppHeader(){
   const user=getUser(),token=getUserToken(),nav=useNavigate();
@@ -28,7 +31,8 @@ export default function AppHeader(){
       const publicUnread=(publicItems||[]).filter(x=>!readPublic.has(String(x._id))).map(x=>({...x,kind:'public',message:x.description||'',popupId:`alert:${x._id}`,sortAt:when(x.publishedAt||x.createdAt)}));
       const unread=[...personalUnread,...publicUnread].sort((a,b)=>b.sortAt-a.sortAt);
       setUnreadCount(unread.length);
-      const newest=unread[0];
+      const dismissed=getDismissedPopups(user?.id);
+      const newest=unread.find(x=>!dismissed.has(String(x.popupId)));
       if(newest&&newest.popupId!==lastPopupId.current){
         lastPopupId.current=newest.popupId;
         setPopup(newest);
@@ -52,17 +56,23 @@ export default function AppHeader(){
     };
   },[loadAlerts]);
 
+  const dismissPopup=useCallback(()=>{
+    if(popup?.popupId)rememberDismissedPopup(user?.id,popup.popupId);
+    setPopup(null);
+  },[popup?.popupId,user?.id]);
+
   useEffect(()=>{
     if(!popup)return undefined;
-    const timer=setTimeout(()=>setPopup(null),6500);
+    const timer=setTimeout(dismissPopup,6500);
     return()=>clearTimeout(timer);
-  },[popup?.popupId]);
+  },[popup?.popupId,dismissPopup]);
 
   const openPopup=async()=>{
     if(!popup)return;
     if(popup.kind==='personal'&&!popup.readAt)await api(`/notifications/${popup._id}/read`,{token,method:'PATCH'}).catch(()=>{});
     else if(popup.kind==='public')markPublicAlertRead(user?.id,popup._id);
     const target=popup.actionUrl||popup.linkUrl||(popup.contentId?`/view/${popup.contentId}`:popup.kind==='public'?`/view/${popup._id}`:'/notifications');
+    rememberDismissedPopup(user?.id,popup.popupId);
     setPopup(null);
     loadAlerts();
     navigateTo(target);
@@ -107,7 +117,7 @@ export default function AppHeader(){
           <p className="mt-1 line-clamp-3 text-sm leading-5 text-slate-700">{popup.message||popup.description||'Tap to view details.'}</p>
           <p className={`mt-2 text-xs font-extrabold ${publicAlert?'text-amber-700':'text-violet-700'}`}>Tap to open</p>
         </button>
-        <button type="button" onClick={()=>setPopup(null)} className={`absolute right-3 top-4 grid h-8 w-8 place-items-center rounded-full ${publicAlert?'bg-amber-200 text-amber-800':'bg-violet-200 text-violet-800'}`} aria-label="Dismiss"><X size={16}/></button>
+        <button type="button" onClick={dismissPopup} className={`absolute right-3 top-4 grid h-8 w-8 place-items-center rounded-full ${publicAlert?'bg-amber-200 text-amber-800':'bg-violet-200 text-violet-800'}`} aria-label="Dismiss"><X size={16}/></button>
       </div>
     </div>}
   </>;

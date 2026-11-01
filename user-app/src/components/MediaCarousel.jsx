@@ -16,9 +16,9 @@ export function getMediaItems(item) {
   return [{ url: item.mediaUrl, publicId: item.mediaPublicId || '', type: item.mediaType === 'video' ? 'video' : 'image' }];
 }
 
-const clampRatio = (ratio) => Math.max(0.8, Math.min(1.91, Number(ratio) || 1));
+const clampRatio = (ratio) => Math.max(0.55, Math.min(2.4, Number(ratio) || 1));
 
-function AutoVideo({ media, controls, autoPlayVideo, playOverlay, title }) {
+function AutoVideo({ media, controls, autoPlayVideo, playOverlay, title, single = false, maxHeightClass = '' }) {
   const ref = useRef(null);
   useEffect(() => {
     const video = ref.current;
@@ -31,18 +31,28 @@ function AutoVideo({ media, controls, autoPlayVideo, playOverlay, title }) {
     return () => { observer.disconnect(); video.pause(); };
   }, [autoPlayVideo, controls]);
 
-  return <div className="relative flex h-full w-full items-center justify-center bg-black">
-    <video ref={ref} src={media.url} controls={controls} muted={autoPlayVideo || !controls} playsInline loop={autoPlayVideo && !controls} preload="metadata" aria-label={title || 'Post video'} className="h-full w-full object-contain" />
+  return <div className={`relative flex w-full items-center justify-center bg-black ${single ? '' : 'h-full'}`}>
+    <video
+      ref={ref}
+      src={media.url}
+      controls={controls}
+      muted={autoPlayVideo || !controls}
+      playsInline
+      loop={autoPlayVideo && !controls}
+      preload="metadata"
+      aria-label={title || 'Post video'}
+      className={`${single ? `block h-auto w-full ${maxHeightClass || 'max-h-[80vh]'}` : 'h-full w-full'} bg-black object-contain`}
+    />
     {!controls && !autoPlayVideo && playOverlay && <span className="pointer-events-none absolute inset-0 grid place-items-center bg-black/10 text-white"><PlayCircle size={42}/></span>}
   </div>;
 }
 
-export default function MediaCarousel({ item, linkTo = '', controls = false, autoPlay = false, autoPlayVideo = false, showArrows = false, playOverlay = true, rounded = false }) {
+export default function MediaCarousel({ item, linkTo = '', controls = false, autoPlay = false, autoPlayVideo = false, showArrows = false, playOverlay = true, rounded = false, maxHeightClass = '' }) {
   const items = useMemo(() => getMediaItems(item), [item]);
   const scroller = useRef(null);
   const indexRef = useRef(0);
   const [index, setIndex] = useState(0);
-  const [frameRatio, setFrameRatio] = useState(1);
+  const [frameRatio, setFrameRatio] = useState(0.8);
 
   const setRatioFrom = (width, height) => {
     if (width > 0 && height > 0) setFrameRatio(clampRatio(width / height));
@@ -71,7 +81,7 @@ export default function MediaCarousel({ item, linkTo = '', controls = false, aut
   useEffect(() => {
     indexRef.current = 0;
     setIndex(0);
-    setFrameRatio(1);
+    setFrameRatio(0.8);
     scroller.current?.scrollTo({ left: 0, behavior: 'auto' });
   }, [item?._id, items.length]);
 
@@ -82,6 +92,17 @@ export default function MediaCarousel({ item, linkTo = '', controls = false, aut
   }, [autoPlay, items.length]);
 
   if (!items.length) return null;
+
+  // Single-media posts render at the media's natural height. This removes the
+  // large empty top/bottom bands that appeared when a landscape image was
+  // forced into a square / fixed-ratio feed frame.
+  if (items.length === 1) {
+    const media = items[0];
+    const body = media.type === 'video'
+      ? <AutoVideo media={media} controls={controls} autoPlayVideo={autoPlayVideo} playOverlay={playOverlay} title={item?.title} single maxHeightClass={maxHeightClass}/>
+      : <div className="w-full bg-slate-100"><img src={media.url} alt={item?.title || 'Post media'} loading="eager" className={`block h-auto w-full object-contain ${maxHeightClass}`}/></div>;
+    return <div className={`relative overflow-hidden bg-slate-100 ${rounded ? 'rounded-3xl' : ''}`}>{linkTo ? <Link to={linkTo} className="block w-full">{body}</Link> : body}</div>;
+  }
 
   const slide = (media, i) => {
     const body = media.type === 'video'

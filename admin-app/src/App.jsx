@@ -18,6 +18,7 @@ import ChatConversationPage from './pages/ChatConversationPage';
 import PaymentsPage from './pages/PaymentsPage';
 import SettingsPage from './pages/SettingsPage';
 import SimplePage from './pages/SimplePage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import SubmissionsPage from './pages/SubmissionsPage';
 
 export default function App(){
@@ -54,7 +55,7 @@ export default function App(){
           <Route path="/users" element={<UsersPage/>}/>
           <Route path="/chat" element={<ChatInboxPage/>}/>
           <Route path="/payments" element={<PaymentsPage/>}/>
-          <Route path="/analytics" element={<SimplePage eyebrow="INSIGHTS" title="Analytics">Use Dashboard lifecycle cards for current live, expiry and renewal counts. More charts can be added after production data grows.</SimplePage>}/>
+          <Route path="/analytics" element={<AnalyticsPage/>}/>
           <Route path="/settings" element={<SettingsPage/>}/>
         </Route>
       </Route>

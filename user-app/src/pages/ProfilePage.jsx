@@ -1,4 +1,4 @@
-import { Camera, FileCheck2, Images, Lock, LogOut, MessageCircle, Phone, Save, ShieldCheck, Trash2, Unlock, UserPlus } from 'lucide-react';
+import { Camera, ChevronRight, FileCheck2, FileText, Headphones, Images, IndianRupee, Lock, LogOut, MessageCircle, Phone, RefreshCcw, Save, ShieldCheck, Trash2, Truck, Unlock, UserPlus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
@@ -186,6 +186,21 @@ export default function ProfilePage(){
         </form>
       </section>
 
+      <section className="mt-5 overflow-hidden rounded-[26px] border bg-white shadow-sm">
+        <div className="border-b bg-slate-50 px-5 py-4">
+          <p className="font-black text-slate-900">Help & Legal</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Policies, pricing details and support information for Namma Madurandhagam.</p>
+        </div>
+        <div className="divide-y">
+          <LegalLink to="/terms-and-conditions" icon={<FileText size={19}/>} title="Terms & Conditions" text="Platform usage, submissions and payment terms"/>
+          <LegalLink to="/privacy-policy" icon={<ShieldCheck size={19}/>} title="Privacy Policy" text="How your account and content information is handled"/>
+          <LegalLink to="/refund-cancellation" icon={<RefreshCcw size={19}/>} title="Refund & Cancellation Policy" text="Refund eligibility and processing information"/>
+          <LegalLink to="/pricing-services" icon={<IndianRupee size={19}/>} title="Pricing & Services" text="Current publishing plans and service charges"/>
+          <LegalLink to="/shipping-delivery" icon={<Truck size={19}/>} title="Shipping & Delivery Policy" text="Digital-service delivery information"/>
+          <LegalLink to="/contact-us" icon={<Headphones size={19}/>} title="Contact Us" text="Business contact and support details"/>
+        </div>
+      </section>
+
       <button onClick={logout} className="mt-5 flex w-full items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 font-extrabold text-red-700"><LogOut size={19}/> Logout</button>
     </main>
 
@@ -195,6 +210,14 @@ export default function ProfilePage(){
       onApply={async blob=>{await uploadPhoto(blob);setCropFile(null)}}
     />
   </>;
+}
+
+function LegalLink({to,icon,title,text}){
+  return <Link to={to} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-slate-50">
+    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-blue-50 text-blue-600">{icon}</span>
+    <div className="min-w-0 flex-1"><p className="font-extrabold text-slate-900">{title}</p><p className="mt-0.5 text-[11px] leading-5 text-slate-500">{text}</p></div>
+    <ChevronRight size={18} className="shrink-0 text-slate-400"/>
+  </Link>;
 }
 
 function ContactToggle({icon,title,text,checked,disabled,onChange}){

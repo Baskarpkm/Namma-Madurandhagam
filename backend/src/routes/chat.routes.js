@@ -2,6 +2,7 @@ import { Router } from 'express';
 import mongoose from 'mongoose';
 import ChatMessage from '../models/ChatMessage.js';
 import User from '../models/User.js';
+import Follow from '../models/Follow.js';
 import { requireAdmin, requireUser } from '../middleware/auth.js';
 
 const router=Router();
@@ -22,7 +23,24 @@ function validatePayload(req,res){
   return {message,mediaUrl,mediaType:mediaUrl?cleanMediaType(req.body?.mediaType):'none'};
 }
 
-function publicPeer(user){
+async function hasAcceptedRelationship(viewerId,targetId){
+  return Boolean(await Follow.exists({
+    status:'accepted',
+    $or:[
+      {followerId:viewerId,followingId:targetId},
+      {followerId:targetId,followingId:viewerId}
+    ]
+  }));
+}
+
+async function contactAllowed(viewerId,target){
+  if(!target?.isPrivate)return true;
+  return hasAcceptedRelationship(viewerId,target._id);
+}
+
+function publicPeer(user,relationshipAllowed=true){
+  const canMessage=relationshipAllowed&&Boolean(user.allowMessages);
+  const canCall=relationshipAllowed&&Boolean(user.allowCalls);
   return {
     id:String(user._id),
     name:user.name,
@@ -30,9 +48,9 @@ function publicPeer(user){
     village:user.village||'',
     gender:user.gender||'other',
     profilePhotoUrl:user.profilePhotoUrl||'',
-    canMessage:Boolean(user.allowMessages),
-    canCall:Boolean(user.allowCalls),
-    callHref:user.allowCalls?`tel:+91${String(user.mobile||'').replace(/\D/g,'')}`:''
+    canMessage,
+    canCall,
+    callHref:canCall?`tel:+91${String(user.mobile||'').replace(/\D/g,'')}`:''
   };
 }
 
@@ -100,7 +118,7 @@ router.get('/user/conversations',requireUser,async(req,res,next)=>{try{
 
   const peerIds=[...map.keys()].filter(id=>mongoose.isValidObjectId(id));
   const users=peerIds.length
-    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile').lean()
+    ? await User.find({_id:{$in:peerIds},status:'active'}).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile isPrivate').lean()
     : [];
   const userMap=new Map(users.map(u=>[String(u._id),u]));
 
@@ -166,9 +184,10 @@ router.get('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
   if(!mongoose.isValidObjectId(peerId))return res.status(404).json({message:'Conversation not found'});
   if(peerId===String(me))return res.status(400).json({message:'You cannot message yourself'});
 
-  const peer=await User.findById(peerId).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile status').lean();
+  const peer=await User.findById(peerId).select('name username village gender profilePhotoUrl allowMessages allowCalls mobile isPrivate status').lean();
   if(!peer||peer.status!=='active')return res.status(404).json({message:'User not found'});
 
+  const relationshipAllowed=await contactAllowed(me,peer);
   const key=userKey(me,peerId);
   await ChatMessage.updateMany(
     {kind:'user-user',conversationKey:key,receiverUserId:me,readAt:null},
@@ -181,7 +200,7 @@ router.get('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
     .lean();
 
   res.json({
-    peer:{...publicPeer(peer),type:'user'},
+    peer:{...publicPeer(peer,relationshipAllowed),type:'user'},
     messages:rows.map(row=>shapeUserMessage(row,me))
   });
 }catch(e){next(e)}});
@@ -206,9 +225,10 @@ router.post('/user/conversation/:peerId',requireUser,async(req,res,next)=>{try{
   if(!mongoose.isValidObjectId(peerId))return res.status(404).json({message:'User not found'});
   if(peerId===String(me))return res.status(400).json({message:'You cannot message yourself'});
 
-  const target=await User.findById(peerId).select('allowMessages status').lean();
+  const target=await User.findById(peerId).select('allowMessages isPrivate status').lean();
   if(!target||target.status!=='active')return res.status(404).json({message:'User not found'});
   if(!target.allowMessages)return res.status(403).json({message:'This user has turned off direct messages.'});
+  if(!(await contactAllowed(me,target)))return res.status(403).json({message:'This private account allows messages only from followers and following.'});
 
   const msg=await ChatMessage.create({
     kind:'user-user',

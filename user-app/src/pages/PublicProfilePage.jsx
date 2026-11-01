@@ -10,7 +10,7 @@ import EmptyState from '../components/EmptyState';
 
 export default function PublicProfilePage(){
   const {userId}=useParams(),token=getUserToken(),me=getUser(),nav=useNavigate();
-  const [profile,setProfile]=useState(null),[posts,setPosts]=useState([]),[contact,setContact]=useState({username:'',canCall:false,canMessage:false,callHref:''});
+  const [profile,setProfile]=useState(null),[posts,setPosts]=useState([]),[contact,setContact]=useState({username:'',isPrivate:false,relationshipAllowed:true,canCall:false,canMessage:false,callHref:''});
   const [error,setError]=useState(''),[loading,setLoading]=useState(true);
 
   const load=async()=>{
@@ -18,7 +18,7 @@ export default function PublicProfilePage(){
     try{
       const [p,c]=await Promise.all([
         api(`/social/profiles/${userId}`,{token}),
-        api(`/contact/profile/${userId}`,{token}).catch(()=>({canCall:false,canMessage:false,callHref:''}))
+        api(`/contact/profile/${userId}`,{token}).catch(()=>({canCall:false,canMessage:false,callHref:'',relationshipAllowed:false}))
       ]);
       setProfile(p);
       setContact(c||{});
@@ -38,7 +38,8 @@ export default function PublicProfilePage(){
     if(previous==='accepted'&&next!=='accepted')delta=-1;
     if(previous!=='accepted'&&next==='accepted')delta=1;
     const canView=!p.user.isPrivate||next==='accepted'||String(me?.id||'')===String(userId);
-    if(canView&&!p.canViewContent)setTimeout(load,0);
+    // Contact permission depends on the accepted follower/following relationship, so refresh it after every follow change.
+    setTimeout(load,0);
     return {...p,followStatus:next,canViewContent:canView,counts:{...p.counts,followers:Math.max(0,Number(p.counts?.followers||0)+delta)}};
   });
 
@@ -47,6 +48,7 @@ export default function PublicProfilePage(){
 
   const own=String(me?.id||'')===String(userId);
   const {user,counts,followStatus,canViewContent}=profile;
+  const privateContactLocked=!own&&user.isPrivate&&contact?.relationshipAllowed===false;
 
   return <main className="mx-auto max-w-2xl pb-24 pt-4 sm:px-4 sm:pt-6">
     <button onClick={()=>nav(-1)} className="mx-4 mb-4 flex items-center gap-2 rounded-xl border bg-white px-3 py-2 text-sm font-bold text-slate-600 sm:mx-0"><ArrowLeft size={17}/>Back</button>
@@ -73,7 +75,8 @@ export default function PublicProfilePage(){
         {contact?.canCall&&contact?.callHref&&<a href={contact.callHref} className="flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-extrabold text-white"><Phone size={18}/>Call</a>}
         {contact?.canMessage&&<Link to={`/chat/${user.id}`} className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-extrabold text-white"><MessageCircle size={18}/>Message</Link>}
       </div>}
-      {!own&&!contact?.canCall&&!contact?.canMessage&&<p className="mt-4 text-center text-xs font-semibold text-slate-400">This user has not enabled call or message contact options.</p>}
+      {privateContactLocked&&<p className="mt-4 text-center text-xs font-semibold leading-5 text-slate-400">Call and Message are available only to this private account's accepted followers and following.</p>}
+      {!own&&!privateContactLocked&&!contact?.canCall&&!contact?.canMessage&&<p className="mt-4 text-center text-xs font-semibold text-slate-400">This user has not enabled call or message contact options.</p>}
     </section>
 
     <div className="mt-4 border-y bg-white py-3 text-center text-sm font-black text-slate-900 sm:rounded-2xl sm:border">Posts</div>

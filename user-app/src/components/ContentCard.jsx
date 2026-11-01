@@ -1,6 +1,6 @@
 import { ArrowRight, Heart, MapPin, MessageCircle, Share2 } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { getUser, getUserToken } from '../lib/session';
 import MediaCarousel, { getMediaItems } from './MediaCarousel';
@@ -11,6 +11,8 @@ import ExpandablePostText from './ExpandablePostText';
 export default function ContentCard({ item, compact = false, feedMode = false }) {
   const isPost = item.type === 'post';
   const detailPath = item.type === 'offer' ? `/offer/${item._id}` : `/view/${item._id}`;
+  const nav = useNavigate();
+  const location = useLocation();
   const token = getUserToken();
   const me = getUser();
   const mediaItems = getMediaItems(item);
@@ -22,6 +24,8 @@ export default function ContentCard({ item, compact = false, feedMode = false })
   const [notice, setNotice] = useState('');
   const profilePath=item.author?.id?`/profile/${item.author.id}`:'';
   const isOwn=Boolean(item.author?.id&&String(item.author.id)===String(me?.id||''));
+  const openActionTarget=()=>{const target=String(item.linkUrl||'').trim();if(!target)return;if(/^https?:\/\//i.test(target)){window.open(target,'_blank','noopener,noreferrer');return}nav(target)};
+  const rememberFeedPosition=(event)=>{if(!(feedMode||isPost))return;const anchor=event.target?.closest?.('a');if(!anchor)return;const href=anchor.getAttribute('href')||'';if(!href.startsWith(detailPath))return;try{sessionStorage.setItem('nm-feed-return',JSON.stringify({path:`${location.pathname}${location.search}`,y:window.scrollY,itemId:String(item._id),detailPath}))}catch{}};
 
   const toggleLike = async () => {
     if (!isPost || busy) return;
@@ -46,7 +50,7 @@ export default function ContentCard({ item, compact = false, feedMode = false })
 
   const authorBlock=<><UserAvatar user={item.author} sizeClass="h-10 w-10" iconSize={19}/><div className="min-w-0"><p className="truncate text-sm font-black text-slate-900">{item.author?.name || 'Namma Madurandhagam'}</p><p className="flex items-center gap-1 truncate text-[11px] font-semibold text-slate-400">{item.area && <><MapPin size={11}/>{item.area}<span>•</span></>}<span className="uppercase">{typeLabel}</span></p></div></>;
   const edgeFeed = isPost || feedMode;
-  return <article className={edgeFeed ? 'group overflow-hidden border-y border-slate-200 bg-white' : 'group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg'}>
+  return <article onClickCapture={rememberFeedPosition} className={edgeFeed ? 'group overflow-hidden border-y border-slate-200 bg-white' : 'group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg'}>
     <header className="flex items-center gap-3 p-4 pb-3">
       {profilePath?<Link to={profilePath} className="flex min-w-0 flex-1 items-center gap-3">{authorBlock}</Link>:<div className="flex min-w-0 flex-1 items-center gap-3">{authorBlock}</div>}
       {isPost&&item.author?.id&&!isOwn&&<FollowButton userId={item.author.id} initialStatus={item.author.followStatus||'none'} compact/>}
@@ -56,7 +60,7 @@ export default function ContentCard({ item, compact = false, feedMode = false })
       <Link to={detailPath} className="block text-lg font-black leading-snug text-slate-900 hover:text-blue-700">{item.title}</Link>
       {item.description && (isPost?<ExpandablePostText text={item.description} className="mt-2"/>:<p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-600">{item.description}</p>)}
       {item.price != null && item.price !== '' && <p className="mt-3 text-lg font-black text-blue-700">₹{Number(item.price).toLocaleString('en-IN')}</p>}
-      {isPost ? <div className="mt-4 border-t pt-3"><div className="flex items-center gap-1"><button type="button" disabled={busy} onClick={toggleLike} className={`flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold transition ${liked ? 'text-rose-600' : 'text-slate-600 hover:bg-slate-100'}`}><Heart size={18} fill={liked ? 'currentColor' : 'none'}/><span>{likeCount}</span></button><Link to={detailPath} className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold text-slate-600 hover:bg-slate-100"><MessageCircle size={18}/><span>{item.commentCount || 0}</span></Link><button type="button" disabled={busy} onClick={sharePost} className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold text-slate-600 hover:bg-slate-100"><Share2 size={18}/><span>{shareCount}</span></button><Link to={detailPath} className="ml-auto text-xs font-extrabold text-blue-600">View</Link></div>{notice && <p className="mt-2 text-[11px] font-bold text-blue-600">{notice}</p>}</div> : <Link to={detailPath} className="mt-4 flex items-center justify-between border-t pt-3 text-sm font-extrabold text-blue-600"><span>{item.type === 'offer' ? 'View offer' : item.mediaType === 'video' ? 'Watch & view details' : 'View details'}</span><ArrowRight size={17}/></Link>}
+      {isPost ? <div className="mt-4 border-t pt-3"><div className="flex items-center gap-1"><button type="button" disabled={busy} onClick={toggleLike} className={`flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold transition ${liked ? 'text-rose-600' : 'text-slate-600 hover:bg-slate-100'}`}><Heart size={18} fill={liked ? 'currentColor' : 'none'}/><span>{likeCount}</span></button><Link to={detailPath} className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold text-slate-600 hover:bg-slate-100"><MessageCircle size={18}/><span>{item.commentCount || 0}</span></Link><button type="button" disabled={busy} onClick={sharePost} className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs font-extrabold text-slate-600 hover:bg-slate-100"><Share2 size={18}/><span>{shareCount}</span></button><Link to={detailPath} className="ml-auto text-xs font-extrabold text-blue-600">View</Link></div>{notice && <p className="mt-2 text-[11px] font-bold text-blue-600">{notice}</p>}</div> : item.type==='offer'&&item.linkUrl ? <button type="button" onClick={openActionTarget} className="mt-4 flex w-full items-center justify-between border-t pt-3 text-sm font-extrabold text-blue-600"><span>Open offer</span><ArrowRight size={17}/></button> : <Link to={detailPath} className="mt-4 flex items-center justify-between border-t pt-3 text-sm font-extrabold text-blue-600"><span>{item.type === 'offer' ? 'View offer' : item.mediaType === 'video' ? 'Watch & view details' : 'View details'}</span><ArrowRight size={17}/></Link>}
     </div>
   </article>;
 }

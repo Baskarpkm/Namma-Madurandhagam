@@ -1,12 +1,14 @@
 import { Router } from 'express';
 import Notification from '../models/Notification.js';
 import { requireUser } from '../middleware/auth.js';
-import { createExpiryNotifications } from '../services/contentLifecycle.js';
+import { processExpiredContent } from '../services/contentLifecycle.js';
 
 const router=Router();
 router.use(requireUser);
 router.get('/',async(req,res,next)=>{try{
-  await createExpiryNotifications({days:3}).catch(()=>{});
+  // Also catches an expiry boundary immediately when a user opens Notifications,
+  // instead of waiting only for the hourly server lifecycle run.
+  await processExpiredContent().catch(()=>{});
   const rows=await Notification.find({userId:req.user.userId}).sort({createdAt:-1}).limit(100).lean();
   res.json(rows);
 }catch(e){next(e)}});

@@ -82,6 +82,7 @@ export default function StoryViewPage() {
   const group = groups[groupIndex];
   const item = group?.stories?.[storyIndex] || null;
   const isOwner = Boolean(item?.author?.id && me?.id && String(item.author.id) === String(me.id));
+  const storyText = String(item?.description || (item?.title && item.title !== 'Story' ? item.title : '') || '').trim();
 
   const firstStoryIndexForGroup = useCallback((nextGroup) => {
     const seen = getSeenStoryIds();
@@ -267,7 +268,7 @@ export default function StoryViewPage() {
 
   return (
     <main
-      className="relative flex min-h-screen select-none items-center justify-center overflow-hidden bg-black text-white"
+      className="relative flex h-[100dvh] min-h-[100dvh] select-none items-center justify-center overflow-hidden bg-black text-white"
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
@@ -297,7 +298,7 @@ export default function StoryViewPage() {
         </div>
       </div>
 
-      <div className="relative flex min-h-screen w-full max-w-3xl items-center justify-center bg-black">
+      <div className="relative flex h-[100dvh] w-full max-w-3xl items-center justify-center bg-black">
         {item.mediaType === 'video' ? (
           <video
             ref={videoRef}
@@ -308,10 +309,10 @@ export default function StoryViewPage() {
             onLoadedMetadata={onVideoProgress}
             onTimeUpdate={onVideoProgress}
             onEnded={advance}
-            className="max-h-screen w-full object-contain"
+            className="h-[100dvh] w-full object-contain object-center"
           />
         ) : (
-          <img key={item._id} src={item.mediaUrl} alt="" className="max-h-screen w-full object-contain"/>
+          <img key={item._id} src={item.mediaUrl} alt="" className="h-[100dvh] w-full object-contain object-center"/>
         )}
 
         <div className="absolute inset-0 z-20 flex pt-20">
@@ -327,9 +328,9 @@ export default function StoryViewPage() {
         )}
       </div>
 
-      {item.description && (
-        <div className={`pointer-events-none absolute inset-x-0 z-30 px-5 ${isOwner ? 'bottom-20' : 'bottom-7'}`}>
-          <p className="mx-auto max-w-xl whitespace-pre-wrap rounded-2xl bg-black/45 px-4 py-3 text-center text-sm font-semibold leading-6 text-white/95 shadow-lg backdrop-blur-sm">{item.description}</p>
+      {storyText && (
+        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 bg-gradient-to-t from-black/90 via-black/45 to-transparent px-5 pt-20 ${isOwner ? 'pb-20' : 'pb-7'}`}>
+          <p className="mx-auto max-w-xl whitespace-pre-wrap break-words text-center text-[15px] font-semibold leading-6 text-white drop-shadow-md">{storyText}</p>
         </div>
       )}
 

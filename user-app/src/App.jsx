@@ -9,6 +9,8 @@ import LiveAutoSync from './components/LiveAutoSync';
 import MobileBackHider from './components/MobileBackHider';
 import PresenceHeartbeat from './components/PresenceHeartbeat';
 import AccountStatusGate from './components/AccountStatusGate';
+import RouteScrollManager from './components/RouteScrollManager';
+import SiteFooter from './components/SiteFooter';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import WelcomePage from './pages/WelcomePage';
@@ -28,6 +30,11 @@ import MockPaymentPage from './pages/MockPaymentPage';
 import ContentDetailPage from './pages/ContentDetailPage';
 import OfferDetailPage from './pages/OfferDetailPage';
 import StoryViewPage from './pages/StoryViewPage';
+import { ContactUsPage, PricingServicesPage, PrivacyPolicyPage, RefundCancellationPage, ShippingDeliveryPage, TermsConditionsPage } from './pages/CompliancePages';
+
+function PublicFooterPage({children}){
+  return <div className="min-h-screen bg-[#f6f9ff]"><div>{children}</div><SiteFooter/></div>;
+}
 
 export default function App(){
   const [syncKey,setSyncKey]=useState(0);
@@ -35,13 +42,20 @@ export default function App(){
 
   return <>
     <GlobalRefreshFix/>
+    <RouteScrollManager/>
     <MobileBackHider/>
     <LiveAutoSync onSync={softSync}/>
     <PresenceHeartbeat/>
     <AccountStatusGate/>
     <Routes key={syncKey}>
-      <Route path="/login" element={<LoginPage/>}/>
-      <Route path="/register" element={<RegisterPage/>}/>
+      <Route path="/login" element={<PublicFooterPage><LoginPage/></PublicFooterPage>}/>
+      <Route path="/register" element={<PublicFooterPage><RegisterPage/></PublicFooterPage>}/>
+      <Route path="/terms-and-conditions" element={<PublicFooterPage><TermsConditionsPage/></PublicFooterPage>}/>
+      <Route path="/privacy-policy" element={<PublicFooterPage><PrivacyPolicyPage/></PublicFooterPage>}/>
+      <Route path="/refund-cancellation" element={<PublicFooterPage><RefundCancellationPage/></PublicFooterPage>}/>
+      <Route path="/pricing-services" element={<PublicFooterPage><PricingServicesPage/></PublicFooterPage>}/>
+      <Route path="/shipping-delivery" element={<PublicFooterPage><ShippingDeliveryPage/></PublicFooterPage>}/>
+      <Route path="/contact-us" element={<PublicFooterPage><ContactUsPage/></PublicFooterPage>}/>
       <Route element={<ProtectedRoute/>}>
         <Route path="/welcome" element={<WelcomePage/>}/>
         <Route path="/story/:id" element={<StoryViewportLock><StoryViewPage/></StoryViewportLock>}/>
