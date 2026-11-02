@@ -37,7 +37,7 @@ app.get('/api/live/version',(req,res)=>res.json({version:liveVersion}));
 
 app.use('/api',(req,res,next)=>{
   const mutating=['POST','PATCH','PUT','DELETE'].includes(req.method);
-  const liveMutation=req.path.startsWith('/content')||req.path.startsWith('/social')||req.path.startsWith('/admin')||req.path.startsWith('/payments')||req.path.startsWith('/reports')||req.path.startsWith('/calls')||req.path==='/auth/user/profile';
+  const liveMutation=req.path.startsWith('/content')||req.path.startsWith('/social')||req.path.startsWith('/admin')||req.path.startsWith('/payments')||req.path.startsWith('/reports')||req.path==='/auth/user/profile';
   if(mutating&&liveMutation)res.on('finish',()=>{if(res.statusCode>=200&&res.statusCode<400)liveVersion=Date.now();});
   next();
 });

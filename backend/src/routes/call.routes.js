@@ -9,30 +9,33 @@ import { requireUser } from '../middleware/auth.js';
 const router=Router();
 router.use(requireUser);
 
+const ACTIVE=['ringing','accepted','connected'];
+const TERMINAL=['declined','cancelled','missed','ended'];
+const RING_TIMEOUT_MS=50_000;
 const publicUser=u=>u?{id:String(u._id),name:u.name,username:u.username||'',profilePhotoUrl:u.profilePhotoUrl||'',gender:u.gender||'other'}:null;
 
-async function blocked(a,b){
-  return Boolean(await Block.exists({$or:[{blockerId:a,blockedId:b},{blockerId:b,blockedId:a}]}));
-}
-async function acceptedRelationship(a,b){
-  return Boolean(await Follow.exists({status:'accepted',$or:[{followerId:a,followingId:b},{followerId:b,followingId:a}]}));
+async function blocked(a,b){return Boolean(await Block.exists({$or:[{blockerId:a,blockedId:b},{blockerId:b,blockedId:a}]}));}
+async function acceptedRelationship(a,b){return Boolean(await Follow.exists({status:'accepted',$or:[{followerId:a,followingId:b},{followerId:b,followingId:a}]}));}
+async function expireStaleRinging(extra={}){
+  const now=new Date();
+  await CallSession.updateMany({status:'ringing',createdAt:{$lt:new Date(now.getTime()-RING_TIMEOUT_MS)},...extra},{$set:{status:'missed',endedAt:now}}).catch(()=>{});
 }
 async function loadCall(id,me){
   if(!mongoose.isValidObjectId(id))return null;
   return CallSession.findOne({_id:id,$or:[{callerId:me},{receiverId:me}]}).populate('callerId','name username profilePhotoUrl gender').populate('receiverId','name username profilePhotoUrl gender');
 }
-function shape(row,me){
+function shape(row,me,{signals=true}={}){
   const caller=row.callerId?._id?row.callerId:null,receiver=row.receiverId?._id?row.receiverId:null;
-  const callerId = String(caller?._id ?? row.callerId);
-  const receiverId = String(receiver?._id ?? row.receiverId);
-  return {
-    id:String(row._id),status:row.status,createdAt:row.createdAt,answeredAt:row.answeredAt,endedAt:row.endedAt,
-    durationSeconds:Number(row.durationSeconds||0),
-    isCaller:callerId===String(me),
-    caller:publicUser(caller),receiver:publicUser(receiver),
-    offer:row.offer||null,answer:row.answer||null,
-    callerCandidates:row.callerCandidates||[],receiverCandidates:row.receiverCandidates||[]
+  const callerId=String(caller?._id:row.callerId),receiverId=String(receiver?._id:row.receiverId);
+  const data={
+    id:String(row._id),status:row.status,createdAt:row.createdAt,answeredAt:row.answeredAt,connectedAt:row.connectedAt,endedAt:row.endedAt,
+    durationSeconds:Number(row.durationSeconds||0),isCaller:callerId===String(me),caller:publicUser(caller),receiver:publicUser(receiver)
   };
+  if(signals){
+    data.offer=row.offer||null;data.answer=row.answer||null;
+    data.callerCandidates=row.callerCandidates||[];data.receiverCandidates=row.receiverCandidates||[];
+  }
+  return data;
 }
 
 router.post('/start/:targetId',async(req,res,next)=>{try{
@@ -42,16 +45,29 @@ router.post('/start/:targetId',async(req,res,next)=>{try{
   if(!target||target.status!=='active')return res.status(404).json({message:'User not found'});
   if(await blocked(me,targetId))return res.status(403).json({message:'You cannot call this user because one of you has blocked the other.'});
   if(!target.allowCalls)return res.status(403).json({message:'This user has disabled calls.'});
-  if(target.isPrivate&&!(await acceptedRelationship(me,targetId)))return res.status(403).json({message:'Private accounts accept calls only from followers/following.'});
+  if(target.isPrivate&&!(await acceptedRelationship(me,targetId)))return res.status(403).json({message:'Private accounts accept calls only from accepted followers/following.'});
 
-  await CallSession.updateMany({callerId:me,status:'ringing',createdAt:{$lt:new Date(Date.now()-60_000)}},{$set:{status:'missed',endedAt:new Date()}});
+  await expireStaleRinging({$or:[{callerId:me},{receiverId:me}]});
+
+  const recent=await CallSession.findOne({
+    callerId:me,receiverId:targetId,status:{$in:ACTIVE},createdAt:{$gte:new Date(Date.now()-2*60_000)}
+  }).sort({createdAt:-1});
+  if(recent){const full=await loadCall(recent._id,me);return res.json(shape(full,me));}
+
+  const myOtherCall=await CallSession.exists({$or:[{callerId:me},{receiverId:me}],status:{$in:ACTIVE}});
+  if(myOtherCall)return res.status(409).json({message:'You already have another active call.'});
+  const targetBusy=await CallSession.exists({$or:[{callerId:targetId},{receiverId:targetId}],status:{$in:ACTIVE}});
+  if(targetBusy)return res.status(409).json({message:'This user is already on another call.'});
+
   const row=await CallSession.create({callerId:me,receiverId:targetId,status:'ringing'});
   const full=await loadCall(row._id,me);
   res.status(201).json(shape(full,me));
 }catch(e){next(e)}});
 
 router.get('/incoming',async(req,res,next)=>{try{
-  const row=await CallSession.findOne({receiverId:req.user.userId,status:'ringing',createdAt:{$gte:new Date(Date.now()-60_000)}}).sort({createdAt:-1}).populate('callerId','name username profilePhotoUrl gender').populate('receiverId','name username profilePhotoUrl gender');
+  await expireStaleRinging({receiverId:req.user.userId});
+  const row=await CallSession.findOne({receiverId:req.user.userId,status:'ringing'}).sort({createdAt:-1})
+    .populate('callerId','name username profilePhotoUrl gender').populate('receiverId','name username profilePhotoUrl gender');
   if(!row)return res.json({call:null});
   if(await blocked(row.callerId?._id||row.callerId,req.user.userId)){row.status='declined';row.endedAt=new Date();await row.save();return res.json({call:null});}
   res.json({call:shape(row,req.user.userId)});
@@ -59,18 +75,30 @@ router.get('/incoming',async(req,res,next)=>{try{
 
 router.get('/history',async(req,res,next)=>{try{
   const me=req.user.userId;
+  await expireStaleRinging({$or:[{callerId:me},{receiverId:me}]});
   const [rows,blockRows]=await Promise.all([
-    CallSession.find({$or:[{callerId:me},{receiverId:me}]}).sort({createdAt:-1}).limit(100).populate('callerId','name username profilePhotoUrl gender').populate('receiverId','name username profilePhotoUrl gender').lean(),
+    CallSession.find({$or:[{callerId:me},{receiverId:me}],status:{$in:TERMINAL}}).sort({createdAt:-1}).limit(150)
+      .populate('callerId','name username profilePhotoUrl gender').populate('receiverId','name username profilePhotoUrl gender').lean(),
     Block.find({$or:[{blockerId:me},{blockedId:me}]}).select('blockerId blockedId').lean()
   ]);
   const hidden=new Set(blockRows.map(r=>String(r.blockerId)===String(me)?String(r.blockedId):String(r.blockerId)));
-  res.json(rows.filter(r=>{
-    const other=String(r.callerId?._id||r.callerId)===String(me)?String(r.receiverId?._id||r.receiverId):String(r.callerId?._id||r.callerId);
-    return !hidden.has(other);
-  }).map(r=>shape(r,me)));
+  const visible=[];
+  for(const r of rows){
+    const callerId=String(r.callerId?._id||r.callerId),receiverId=String(r.receiverId?._id||r.receiverId);
+    const other=callerId===String(me)?receiverId:callerId;
+    if(hidden.has(other))continue;
+    const duplicate=visible.some(prev=>{
+      const pc=String(prev.callerId?._id||prev.callerId),pr=String(prev.receiverId?._id||prev.receiverId);
+      return pc===callerId&&pr===receiverId&&Math.abs(new Date(prev.createdAt)-new Date(r.createdAt))<12_000&&Number(prev.durationSeconds||0)===0&&Number(r.durationSeconds||0)===0;
+    });
+    if(!duplicate)visible.push(r);
+    if(visible.length>=100)break;
+  }
+  res.json(visible.map(r=>shape(r,me,{signals:false})));
 }catch(e){next(e)}});
 
 router.get('/:id',async(req,res,next)=>{try{
+  if(mongoose.isValidObjectId(req.params.id))await expireStaleRinging({_id:req.params.id});
   const row=await loadCall(req.params.id,req.user.userId);
   if(!row)return res.status(404).json({message:'Call not found'});
   res.json(shape(row,req.user.userId));
@@ -79,19 +107,34 @@ router.get('/:id',async(req,res,next)=>{try{
 router.post('/:id/offer',async(req,res,next)=>{try{
   const row=await CallSession.findOne({_id:req.params.id,callerId:req.user.userId,status:'ringing'});
   if(!row)return res.status(404).json({message:'Call not available'});
-  row.offer=req.body?.offer||null;await row.save();res.json({ok:true});
+  row.offer=req.body?.offer||null;
+  row.answer=null;row.callerCandidates=[];row.receiverCandidates=[];
+  await row.save();res.json({ok:true});
 }catch(e){next(e)}});
 
 router.post('/:id/answer',async(req,res,next)=>{try{
-  const row=await CallSession.findOne({_id:req.params.id,receiverId:req.user.userId,status:'ringing'});
+  const row=await CallSession.findOne({_id:req.params.id,receiverId:req.user.userId});
   if(!row)return res.status(404).json({message:'Call not available'});
   if(await blocked(row.callerId,row.receiverId))return res.status(403).json({message:'Call is blocked'});
-  row.answer=req.body?.answer||null;row.status='accepted';row.answeredAt=new Date();await row.save();res.json({ok:true});
+  if(['accepted','connected'].includes(row.status)&&row.answer)return res.json({ok:true,status:row.status});
+  if(row.status!=='ringing')return res.status(409).json({message:'This call is no longer ringing'});
+  row.answer=req.body?.answer||null;row.status='accepted';row.answeredAt=row.answeredAt||new Date();
+  await row.save();res.json({ok:true,status:row.status});
+}catch(e){next(e)}});
+
+router.post('/:id/connected',async(req,res,next)=>{try{
+  const row=await CallSession.findOne({_id:req.params.id,$or:[{callerId:req.user.userId},{receiverId:req.user.userId}]});
+  if(!row)return res.status(404).json({message:'Call not found'});
+  if(TERMINAL.includes(row.status))return res.json({ok:true,status:row.status});
+  if(!['accepted','connected'].includes(row.status))return res.status(409).json({message:'Call has not been accepted yet'});
+  if(!row.connectedAt)row.connectedAt=new Date();
+  row.status='connected';await row.save();
+  res.json({ok:true,status:row.status,connectedAt:row.connectedAt});
 }catch(e){next(e)}});
 
 router.post('/:id/candidate',async(req,res,next)=>{try{
-  const row=await CallSession.findOne({_id:req.params.id,$or:[{callerId:req.user.userId},{receiverId:req.user.userId}]});
-  if(!row)return res.status(404).json({message:'Call not found'});
+  const row=await CallSession.findOne({_id:req.params.id,$or:[{callerId:req.user.userId},{receiverId:req.user.userId}],status:{$in:ACTIVE}});
+  if(!row)return res.status(404).json({message:'Active call not found'});
   const candidate=req.body?.candidate;if(!candidate)return res.status(400).json({message:'Candidate required'});
   if(String(row.callerId)===String(req.user.userId))row.callerCandidates.push(candidate);else row.receiverCandidates.push(candidate);
   if(row.callerCandidates.length>100)row.callerCandidates=row.callerCandidates.slice(-100);
@@ -102,11 +145,12 @@ router.post('/:id/candidate',async(req,res,next)=>{try{
 async function finish(req,res,next,status){try{
   const row=await CallSession.findOne({_id:req.params.id,$or:[{callerId:req.user.userId},{receiverId:req.user.userId}]});
   if(!row)return res.status(404).json({message:'Call not found'});
-  if(['ended','declined','cancelled','missed'].includes(row.status))return res.json({ok:true,status:row.status});
+  if(TERMINAL.includes(row.status))return res.json({ok:true,status:row.status,durationSeconds:row.durationSeconds});
   const now=new Date();
   if(status==='declined'&&String(row.receiverId)!==String(req.user.userId))return res.status(403).json({message:'Only receiver can decline'});
   row.status=status;row.endedAt=now;
-  if(row.answeredAt)row.durationSeconds=Math.max(0,Math.floor((now-new Date(row.answeredAt))/1000));
+  const started=row.connectedAt||null;
+  row.durationSeconds=started?Math.max(0,Math.floor((now-new Date(started))/1000)):0;
   await row.save();res.json({ok:true,status:row.status,durationSeconds:row.durationSeconds});
 }catch(e){next(e)}}
 router.post('/:id/decline',(req,res,next)=>finish(req,res,next,'declined'));

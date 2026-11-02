@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { API, resetApiCache } from '../lib/api';
 
 const skipExact=new Set(['/login','/register','/welcome']);
-const skipPrefixes=['/post','/mock-payment/','/chat','/story/'];
+const skipPrefixes=['/post','/mock-payment/','/chat','/story/','/call/'];
 
 export default function LiveAutoSync({onSync,intervalMs=4000}){
   const location=useLocation();
@@ -30,12 +30,8 @@ export default function LiveAutoSync({onSync,intervalMs=4000}){
         const next=Number(data?.version||0);
         if(cancelled||!next)return;
 
-        if(versionRef.current===null){
-          versionRef.current=next;
-          return;
-        }
+        if(versionRef.current===null){versionRef.current=next;return}
         if(next===versionRef.current&&!force)return;
-
         const changed=next!==versionRef.current;
         if(!changed)return;
         if(isPaused())return;
@@ -56,8 +52,7 @@ export default function LiveAutoSync({onSync,intervalMs=4000}){
     document.addEventListener('visibilitychange',onVisible);
 
     return()=>{
-      cancelled=true;
-      clearInterval(timer);
+      cancelled=true;clearInterval(timer);
       window.removeEventListener('focus',onFocus);
       document.removeEventListener('visibilitychange',onVisible);
     };

@@ -1,6 +1,6 @@
 import { CheckCircle2, Eye, RefreshCw, Trash2, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { adminApi } from '../lib/api';
+import { adminApi as api } from '../lib/api';
 
 const reasonLabel={spam:'Spam','false-information':'False information',harassment:'Harassment',inappropriate:'Inappropriate content',scam:'Scam / fraud',other:'Other'};
 
@@ -11,7 +11,7 @@ export default function ReportsPage(){
 
   const act=async(row,next)=>{
     const adminNote=next==='removed'?'Removed after report review.':'';
-    try{await adminApi(`/reports/admin/${row._id}`,{method:'PATCH',body:JSON.stringify({status:next,adminNote})});load()}catch(e){setError(e.message)}
+    try{await api(`/reports/admin/${row._id}`,{method:'PATCH',body:JSON.stringify({status:next,adminNote})});load()}catch(e){setError(e.message)}
   };
 
   return <div>

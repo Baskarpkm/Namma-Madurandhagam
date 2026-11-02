@@ -14,13 +14,9 @@ export default function CallIncomingWatcher(){
     let dead=false;
     const tick=async()=>{
       if(location.pathname.startsWith('/call/')){setCall(null);return}
-      try{
-        const r=await api('/calls/incoming',{token});
-        if(!dead)setCall(r.call||null);
-      }catch{}
+      try{const r=await api('/calls/incoming',{token,fresh:true});if(!dead)setCall(r.call||null)}catch{}
     };
-    tick();
-    const id=setInterval(tick,3000);
+    tick();const id=setInterval(tick,1500);
     return()=>{dead=true;clearInterval(id)};
   },[token,location.pathname]);
 
