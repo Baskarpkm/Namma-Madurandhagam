@@ -26,7 +26,7 @@ async function loadCall(id,me){
 }
 function shape(row,me,{signals=true}={}){
   const caller=row.callerId?._id?row.callerId:null,receiver=row.receiverId?._id?row.receiverId:null;
-  const callerId=String(caller?._id:row.callerId),receiverId=String(receiver?._id:row.receiverId);
+  const callerId=String(caller?._id ?? row.callerId),receiverId=String(receiver?._id ?? row.receiverId);
   const data={
     id:String(row._id),status:row.status,createdAt:row.createdAt,answeredAt:row.answeredAt,connectedAt:row.connectedAt,endedAt:row.endedAt,
     durationSeconds:Number(row.durationSeconds||0),isCaller:callerId===String(me),caller:publicUser(caller),receiver:publicUser(receiver)
